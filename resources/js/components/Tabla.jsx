@@ -1,81 +1,91 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Check, X, MessageSquare, AlertCircle } from "lucide-react";
-import ModalRechazo from "../components/modal/ModalRechazo"; // Ajusta la ruta donde guardaste el Modal
+import { router } from "@inertiajs/react";
+import { toast } from "sonner"; // Asegúrate de importar tu librería de Toast
+import ModalRechazo from "../components/modal/ModalRechazo";
 
 export default function Tabla({ notas }) {
-    // 1. ESTADO LOCAL: Inicializamos lazy para evitar flash de datos vacíos
-    const [localNotas, setLocalNotas] = useState(() => {
-        if (!notas) return [];
-        return notas.map((n) => ({ ...n, cumplio: null, comentario: null }));
-    });
-
+    // 1. ESTADO: Solo necesitamos controlar el Modal y qué nota se está editando
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [selectedNotaIndex, setSelectedNotaIndex] = useState(null);
+    const [notaParaRechazar, setNotaParaRechazar] = useState(null);
 
-    // 2. SINCRONIZACIÓN: Si las props cambian (ej. filtro externo), actualizamos
-    useEffect(() => {
-        if (notas) {
-            setLocalNotas(
-                notas.map((n) => ({
-                    ...n,
-                    cumplio: n.cumplio ?? null, // Preserva estado si viene del backend
-                    comentario: n.comentario || null,
-                }))
-            );
-        }
-    }, [notas]);
-
-    // 3. LÓGICA DE NEGOCIO
-    const handleUpdateBackend = (notaActualizada) => {
-        console.log("Enviando al backend:", notaActualizada);
+    // 2. LÓGICA: Aprobar (Cumplió = true)
+    const handleApprove = (nota) => {
+        router.post(
+            `/nota/${nota.fact_num}`,
+            {
+                cumplio: 1, // 1 = True en MySQL
+                comentario: null, // Limpiamos comentario si existía
+            },
+            {
+                preserveScroll: true, // Mantiene la posición en la tabla
+                onSuccess: () => {
+                    toast.success(`Factura #${nota.fact_num} aprobada`);
+                },
+                onError: () => {
+                    toast.error("Error al aprobar la nota");
+                },
+            }
+        );
     };
 
-    const handleApprove = (index) => {
-        const newNotas = [...localNotas];
-        const updatedNota = {
-            ...newNotas[index],
-            cumplio: true,
-            comentario: null,
-        };
-        newNotas[index] = updatedNota;
-        setLocalNotas(newNotas);
-        handleUpdateBackend(updatedNota);
-    };
-
-    const handleRejectClick = (index) => {
-        setSelectedNotaIndex(index);
+    // 3. LÓGICA: Abrir Modal de Rechazo
+    const handleRejectClick = (nota) => {
+        setNotaParaRechazar(nota); // Guardamos el OBJETO nota completo, no el index
         setIsModalOpen(true);
     };
 
-    const handleConfirmReject = (comment) => {
-        if (selectedNotaIndex !== null) {
-            const newNotas = [...localNotas];
-            const updatedNota = {
-                ...newNotas[selectedNotaIndex],
-                cumplio: false,
-                comentario: comment,
-            };
-            newNotas[selectedNotaIndex] = updatedNota;
-            setLocalNotas(newNotas);
-            handleUpdateBackend(updatedNota);
-            // El modal se cierra solo
-        }
+    // 4. LÓGICA: Confirmar Rechazo (Se pasa al Modal)
+    const handleConfirmReject = (comentario) => {
+        // Retornamos una Promesa para que el Modal muestre el "loading"
+        return new Promise((resolve, reject) => {
+            if (!notaParaRechazar) {
+                reject();
+                return;
+            }
+
+            router.post(
+                `/nota/${notaParaRechazar.fact_num}`,
+                {
+                    cumplio: 0, // 0 = False
+                    comentario: comentario,
+                },
+                {
+                    preserveScroll: true,
+                    onSuccess: () => {
+                        toast.success("Nota rechazada correctamente");
+                        setIsModalOpen(false); // Cerramos el modal
+                        setNotaParaRechazar(null);
+                        resolve(); // Avisamos al modal que todo salió bien
+                    },
+                    onError: (errors) => {
+                        toast.error("Error al guardar el rechazo");
+                        console.error(errors);
+                        reject(); // Avisamos al modal que hubo error
+                    },
+                }
+            );
+        });
     };
 
-    // 4. ESTILOS DINÁMICOS DE FILA
+    // 5. ESTILOS DINÁMICOS DE FILA
     const getRowClass = (nota, index) => {
         const base = "transition-colors duration-200";
         const zebra = index % 2 === 0 ? "bg-white" : "bg-gray-50";
 
+        // Nota: Usamos == para que coincida '1' con true o 1
         if (nota.cumplio == true)
             return "bg-green-50 border-l-4 border-green-500";
-        if (nota.cumplio == false) return "bg-red-50 border-l-4 border-red-500";
+        if (nota.cumplio == false)
+            // Específicamente false (rechazado)
+            return "bg-red-50 border-l-4 border-red-500";
 
+        // Si es null (pendiente)
         return `${zebra} border-l-4 border-transparent hover:bg-gray-100`;
     };
 
-    // 5. RENDERIZADO DE CARGA O VACÍO
-    if (!localNotas || localNotas.length === 0) {
+    // 6. RENDERIZADO DE VACÍO
+    if (!notas || notas.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center p-12 bg-white rounded-xl border border-gray-200 shadow-sm text-center">
                 <div className="p-3 bg-gray-100 rounded-full mb-4">
@@ -97,7 +107,6 @@ export default function Tabla({ notas }) {
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            {/* Headers Originales */}
                             <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                                 Cód.
                             </th>
@@ -122,8 +131,6 @@ export default function Tabla({ notas }) {
                             <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">
                                 Días
                             </th>
-
-                            {/* Headers Nuevos */}
                             <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                                 Comentario
                             </th>
@@ -134,9 +141,9 @@ export default function Tabla({ notas }) {
                     </thead>
 
                     <tbody className="divide-y divide-gray-200">
-                        {localNotas.map((nota, index) => (
+                        {notas.map((nota, index) => (
                             <tr
-                                key={index}
+                                key={nota.fact_num} // Usar ID único es mejor que index
                                 className={getRowClass(nota, index)}
                             >
                                 <td className="px-6 py-4 whitespace-nowrap text-xs font-mono text-gray-500">
@@ -203,9 +210,14 @@ export default function Tabla({ notas }) {
                                 {/* Columna Acciones */}
                                 <td className="px-6 py-4 whitespace-nowrap text-center">
                                     <div className="flex items-center justify-center gap-3">
+                                        {/* Botón APROBAR */}
                                         <button
-                                            onClick={() => handleApprove(index)}
-                                            disabled={nota.cumplio !== null}
+                                            onClick={() => handleApprove(nota)}
+                                            disabled={
+                                                nota.cumplio !== null ||
+                                                nota.fec_pagar ===
+                                                    "Formato Inválido"
+                                            } // Deshabilita si ya se decidió
                                             className={`p-2 rounded-lg transition-all shadow-sm ${
                                                 nota.cumplio == true
                                                     ? "bg-green-600 text-white ring-2 ring-green-300 ring-offset-1"
@@ -216,11 +228,16 @@ export default function Tabla({ notas }) {
                                             <Check className="w-5 h-5" />
                                         </button>
 
+                                        {/* Botón RECHAZAR */}
                                         <button
                                             onClick={() =>
-                                                handleRejectClick(index)
+                                                handleRejectClick(nota)
                                             }
-                                            disabled={nota.cumplio !== null}
+                                            disabled={
+                                                nota.cumplio !== null ||
+                                                nota.fec_pagar ===
+                                                    "Formato Inválido"
+                                            }
                                             className={`p-2 rounded-lg transition-all shadow-sm ${
                                                 nota.cumplio == false
                                                     ? "bg-red-600 text-white ring-2 ring-red-300 ring-offset-1"
@@ -238,7 +255,7 @@ export default function Tabla({ notas }) {
                 </table>
             </div>
 
-            {/* Modal Renderizado fuera de la tabla */}
+            {/* Modal Conectado */}
             <ModalRechazo
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}

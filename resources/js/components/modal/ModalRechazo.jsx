@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { X, AlertTriangle, Loader2 } from "lucide-react";
 
+// Eliminamos 'nota' y 'router'. Ahora todo entra por props.
 export default function ModalRechazo({ isOpen, onClose, onConfirm }) {
     const [comment, setComment] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Limpiar comentario al abrir
     useEffect(() => {
         if (isOpen) {
             setComment("");
@@ -15,26 +15,32 @@ export default function ModalRechazo({ isOpen, onClose, onConfirm }) {
 
     const handleSubmit = async () => {
         if (!comment.trim()) return;
+
         setIsSubmitting(true);
 
-        // Simulamos una pequeña espera o procesamos la confirmación
-        await onConfirm(comment);
-
-        setIsSubmitting(false);
-        onClose(); // Cerramos el modal tras confirmar
+        // 👇 MAGIA AQUÍ: Le pasamos el comentario al Padre.
+        // Esperamos a que el padre termine (await) para quitar el loading o cerrar.
+        try {
+            await onConfirm(comment);
+        } catch (error) {
+            // Si el padre lanza error, quitamos el loading
+            setIsSubmitting(false);
+        }
+        // Nota: Si el padre tiene éxito, el padre cerrará el modal (isOpen=false),
+        // así que no hace falta hacer setIsSubmitting(false) en el éxito.
     };
 
     if (!isOpen) return null;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-            {/* Backdrop (Fondo oscuro con blur) */}
+            {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm transition-opacity"
                 onClick={onClose}
             />
 
-            {/* Contenedor del Modal */}
+            {/* Modal */}
             <div className="relative w-full max-w-md transform overflow-hidden rounded-xl bg-white p-6 text-left shadow-2xl transition-all animate-in fade-in zoom-in-95 duration-200">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-5">
@@ -43,12 +49,12 @@ export default function ModalRechazo({ isOpen, onClose, onConfirm }) {
                             <AlertTriangle className="h-5 w-5" />
                         </div>
                         <h3 className="text-lg font-semibold leading-6 text-gray-900">
-                            Rechazar Nota
+                            Confirmar Rechazo
                         </h3>
                     </div>
                     <button
                         onClick={onClose}
-                        className="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-500 transition-colors"
+                        className="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-500"
                     >
                         <X className="h-5 w-5" />
                     </button>
@@ -57,9 +63,8 @@ export default function ModalRechazo({ isOpen, onClose, onConfirm }) {
                 {/* Body */}
                 <div className="mt-2">
                     <p className="text-sm text-gray-500 mb-4">
-                        Estás a punto de marcar esta nota como{" "}
-                        <strong>no cumplida</strong>. Por favor, indica el
-                        motivo para el registro.
+                        Indica el motivo por el cual no se cumplió con el
+                        compromiso.
                     </p>
                     <textarea
                         value={comment}
@@ -67,7 +72,7 @@ export default function ModalRechazo({ isOpen, onClose, onConfirm }) {
                         rows={4}
                         autoFocus
                         className="block w-full rounded-md border-0 p-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 sm:text-sm sm:leading-6"
-                        placeholder="Escribe el motivo aquí..."
+                        placeholder="Motivo del rechazo..."
                     />
                 </div>
 
@@ -84,12 +89,12 @@ export default function ModalRechazo({ isOpen, onClose, onConfirm }) {
                         type="button"
                         disabled={!comment.trim() || isSubmitting}
                         onClick={handleSubmit}
-                        className="inline-flex items-center gap-2 justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="inline-flex items-center gap-2 justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {isSubmitting && (
                             <Loader2 className="h-4 w-4 animate-spin" />
                         )}
-                        Confirmar Rechazo
+                        Confirmar
                     </button>
                 </div>
             </div>

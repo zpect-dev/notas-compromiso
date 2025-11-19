@@ -9,7 +9,7 @@ export default function Home({ notas: notasData, errors }) {
 
             <section className="container mx-auto p-6">
                 <h2 className="text-3xl font-bold mb-6 text-gray-800 border-b pb-2">
-                    Notas de Entrega Pendientes
+                    Notas de Compromiso
                 </h2>
 
                 {errors && Object.keys(errors).length > 0 && (
