@@ -13,7 +13,11 @@ class NotasCompromisoController extends Controller
 {
 public function index(Request $request){
         $notas = NotaCompromiso::select('fact_num', 'comentario', 'fec_emis', 'co_cli')
-            ->with('cliente:co_cli,cli_des,co_seg,co_ven')
+            ->with([
+                'cliente:co_cli,cli_des,co_seg,co_ven', 
+                'cliente.vendedor:co_ven,ven_des', 
+                'cliente.segmento:co_seg,seg_des'
+            ])
             ->with('compromiso:fact_num,comentario,cumplio,created_at')
             ->where('comentario', 'like', '%alcabala%')
             ->orderBy('fact_num', 'desc')
@@ -60,6 +64,9 @@ public function index(Request $request){
                     
                     'cumplio' => $compromiso?->cumplio ?? null, 
                     'comentario' => $compromiso?->comentario ?? null,
+
+                    'segmento' => trim($nota->cliente->segmento?->seg_des),
+                    'vendedor' => trim($nota->cliente->vendedor?->ven_des),
                 ];
             });
 

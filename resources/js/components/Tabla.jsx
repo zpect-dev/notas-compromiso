@@ -181,11 +181,27 @@ export default function Tabla({ notas }) {
                                     >
                                         {nota.cli_des}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
-                                        {nota.co_seg}
+                                    <td
+                                        className="flex flex-col px-6 py-4 whitespace-nowrap text-xs text-gray-500"
+                                        title={nota.segmento}
+                                    >
+                                        <div className="font-bold">
+                                            {nota.co_seg}
+                                        </div>
+                                        <div className="truncate max-w-20">
+                                            {nota.segmento}
+                                        </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
-                                        {nota.co_ven}
+                                    <td
+                                        className="px-6 py-4 whitespace-nowrap text-xs text-gray-500"
+                                        title={nota.vendedor}
+                                    >
+                                        <div className="font-bold">
+                                            {nota.co_ven}
+                                        </div>
+                                        <div className="truncate max-w-[180px]">
+                                            {nota.vendedor}
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600 font-bold">
                                         #{nota.fact_num}
