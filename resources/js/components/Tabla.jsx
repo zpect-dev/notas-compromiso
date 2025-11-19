@@ -99,7 +99,9 @@ export default function Tabla({ notas }) {
                 <h3 className="text-lg font-medium text-gray-900">
                     No hay datos
                 </h3>
-                <p className="text-gray-500 mt-1">No hay notas de entrega valida.</p>
+                <p className="text-gray-500 mt-1">
+                    No hay notas de entrega valida.
+                </p>
             </div>
         );
     }
@@ -202,7 +204,8 @@ export default function Tabla({ notas }) {
                                     <td className="px-6 py-4 whitespace-nowrap text-center">
                                         <span
                                             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium shadow-sm ${
-                                                nota.dias_restantes <= 30
+                                                nota.dias_restantes <= 10 &&
+                                                !nota.cumplio
                                                     ? "bg-red-100 text-red-800"
                                                     : "bg-emerald-100 text-emerald-800"
                                             }`}
