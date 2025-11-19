@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cliente;
+use App\Models\Compromiso;
 use App\Models\NotaCompromiso;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -25,6 +26,8 @@ class NotasCompromisoController extends Controller
 
                 $dias_restantes = $fecha_pagar->diff($fecha_emis, false);
 
+                $compromiso = Compromiso::where('fact_num', $nota->fact_num)->first();
+
                 return [
                     'co_cli' => trim($nota->cliente->co_cli),
                     'cli_des' => trim($nota->cliente->cli_des),
@@ -35,11 +38,29 @@ class NotasCompromisoController extends Controller
                     'fec_pagar' => $fecha_pagar->format('d-m-Y'),
                     'cant_pagar' => $coleccion[2],
                     'dias_restantes' => $dias_restantes->days,
+                    'cumplio' => $compromiso?->cumplio ?? null,
+                    'comentario' => $compromiso?->comentario ?? null,
                 ];
             });
 
         return Inertia::render('Home', [
             'notas' => $notas
         ]);
+    }
+
+    public function store(Request $request, NotaCompromiso $nota) {
+        $request->validate([
+            'comentario' => ['nullable', 'string'],
+            'cumplio' => ['required', 'boolean']
+        ]);
+
+        NotaCompromiso::create([
+            'co_cli' => $nota->co_cli,
+            'fact_num' => $nota->fact_num,
+            'comentario' => $request->comentario,
+            'cumplio' => $request->cumplio,
+        ]);
+
+        return back();
     }
 }
