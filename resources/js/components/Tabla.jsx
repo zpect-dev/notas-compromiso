@@ -99,7 +99,7 @@ export default function Tabla({ notas }) {
                 <h3 className="text-lg font-medium text-gray-900">
                     No hay datos
                 </h3>
-                <p className="text-gray-500 mt-1">No hay notas pendientes.</p>
+                <p className="text-gray-500 mt-1">No hay notas de entrega valida.</p>
             </div>
         );
     }
