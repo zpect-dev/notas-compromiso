@@ -67,10 +67,9 @@ export default function Tabla({ notas }) {
         const base = "transition-colors duration-200";
         const zebra = index % 2 === 0 ? "bg-white" : "bg-gray-50";
 
-        if (nota.cumplio === true)
+        if (nota.cumplio == true)
             return "bg-green-50 border-l-4 border-green-500";
-        if (nota.cumplio === false)
-            return "bg-red-50 border-l-4 border-red-500";
+        if (nota.cumplio == false) return "bg-red-50 border-l-4 border-red-500";
 
         return `${zebra} border-l-4 border-transparent hover:bg-gray-100`;
     };
@@ -183,7 +182,7 @@ export default function Tabla({ notas }) {
 
                                 {/* Columna Comentario */}
                                 <td className="px-6 py-4 whitespace-nowrap text-sm max-w-[150px]">
-                                    {nota.cumplio === false &&
+                                    {nota.cumplio == false &&
                                     nota.comentario ? (
                                         <div
                                             className="flex items-center gap-2 text-red-600 italic truncate"
@@ -208,7 +207,7 @@ export default function Tabla({ notas }) {
                                             onClick={() => handleApprove(index)}
                                             disabled={nota.cumplio !== null}
                                             className={`p-2 rounded-lg transition-all shadow-sm ${
-                                                nota.cumplio === true
+                                                nota.cumplio == true
                                                     ? "bg-green-600 text-white ring-2 ring-green-300 ring-offset-1"
                                                     : "bg-white border border-gray-200 text-green-600 hover:bg-green-50 hover:border-green-300 disabled:opacity-50 disabled:cursor-not-allowed"
                                             }`}
@@ -223,7 +222,7 @@ export default function Tabla({ notas }) {
                                             }
                                             disabled={nota.cumplio !== null}
                                             className={`p-2 rounded-lg transition-all shadow-sm ${
-                                                nota.cumplio === false
+                                                nota.cumplio == false
                                                     ? "bg-red-600 text-white ring-2 ring-red-300 ring-offset-1"
                                                     : "bg-white border border-gray-200 text-red-600 hover:bg-red-50 hover:border-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
                                             }`}
