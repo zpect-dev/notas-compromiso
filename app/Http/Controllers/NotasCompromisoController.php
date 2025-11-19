@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Cliente;
 use App\Models\Compromiso;
 use App\Models\NotaCompromiso;
 use Illuminate\Http\Request;
@@ -12,21 +11,41 @@ use Inertia\Inertia;
 
 class NotasCompromisoController extends Controller
 {
-    public function index(Request $request){
+public function index(Request $request){
         $notas = NotaCompromiso::select('fact_num', 'comentario', 'fec_emis', 'co_cli')
             ->with('cliente:co_cli,cli_des,co_seg,co_ven')
+            ->with('compromiso:fact_num,comentario,cumplio,created_at')
             ->where('comentario', 'like', '%alcabala%')
             ->orderBy('fact_num', 'desc')
             ->get()
             ->map(function($nota){
 
-                $coleccion = Str::of($nota->comentario)->explode('-');
-                $fecha_pagar = Carbon::createFromFormat('d/m/Y', $coleccion[1]);
-                $fecha_emis = Carbon::parse($nota->fec_emis);
+                $fec_pagar_visual = 'Formato Inválido';
+                $monto_pagar = '0';
+                $dias_restantes = 0;
+                
+                $compromiso = $nota->compromiso; 
+                
+                try {
+                    $coleccion = Str::of($nota->comentario)->explode('-');
 
-                $dias_restantes = $fecha_pagar->diff($fecha_emis, false);
+                    if(count($coleccion) >= 3) {
+                        $fecha_pagar = Carbon::createFromFormat('d/m/Y', trim($coleccion[1]))->startOfDay();
+                        
+                        $fec_pagar_visual = $fecha_pagar->format('d-m-Y');
+                        $monto_pagar = trim($coleccion[2]);
 
-                $compromiso = Compromiso::where('fact_num', $nota->fact_num)->first();
+                        if ($compromiso && $compromiso->cumplio) {
+                            $fecha_comparacion = Carbon::parse($compromiso->created_at)->startOfDay();
+                        } else {
+                            $fecha_comparacion = Carbon::today(); 
+                        }
+
+                        $dias_restantes = (int) $fecha_comparacion->diffInDays($fecha_pagar, false);
+                    }
+                } catch (\Throwable $th) {
+
+                }
 
                 return [
                     'co_cli' => trim($nota->cliente->co_cli),
@@ -34,11 +53,12 @@ class NotasCompromisoController extends Controller
                     'co_seg' => trim($nota->cliente->co_seg),
                     'co_ven' => trim($nota->cliente->co_ven),
                     'fact_num' => $nota->fact_num,
-                    'fec_emis' => $fecha_emis->format('d-m-Y'),
-                    'fec_pagar' => $fecha_pagar->format('d-m-Y'),
-                    'cant_pagar' => $coleccion[2],
-                    'dias_restantes' => $dias_restantes->days,
-                    'cumplio' => $compromiso?->cumplio ?? null,
+                    
+                    'fec_pagar' => $fec_pagar_visual,
+                    'cant_pagar' => $monto_pagar,
+                    'dias_restantes' => $dias_restantes,
+                    
+                    'cumplio' => $compromiso?->cumplio ?? null, 
                     'comentario' => $compromiso?->comentario ?? null,
                 ];
             });
@@ -54,7 +74,7 @@ class NotasCompromisoController extends Controller
             'cumplio' => ['required', 'boolean']
         ]);
 
-        NotaCompromiso::create([
+        Compromiso::create([
             'co_cli' => $nota->co_cli,
             'fact_num' => $nota->fact_num,
             'comentario' => $request->comentario,

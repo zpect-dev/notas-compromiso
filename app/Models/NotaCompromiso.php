@@ -14,4 +14,9 @@ class NotaCompromiso extends Model
     {
         return $this->belongsTo(Cliente::class, 'co_cli', 'co_cli');
     }
+
+    public function compromiso()
+    {
+        return $this->hasOne(Compromiso::class, 'fact_num', 'fact_num');
+    }
 }

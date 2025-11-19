@@ -6,5 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class Compromiso extends Model
 {
-    protected $table = 'compromiso';
+    protected $connection = 'mysql'; 
+    protected $table = 'compromiso'; 
+    protected $fillable = [
+        'fact_num', 
+        'comentario', 
+        'cumplio',
+        'co_cli',
+    ];
 }
