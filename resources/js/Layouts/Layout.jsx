@@ -3,7 +3,7 @@ import Logo from "../../../public/Logo.png";
 export default function Layout({ children }) {
     return (
         <div className="min-h-screen flex flex-col">
-            <header className="bg-white p-4 shadow-lg">
+            {/* <header className="bg-white p-4 shadow-lg">
                 <nav className="container mx-auto flex justify-center items-center">
                     <div className="flex items-center space-x-3">
                         <img
@@ -16,7 +16,7 @@ export default function Layout({ children }) {
                         </h1>
                     </div>
                 </nav>
-            </header>
+            </header> */}
 
             <main className="grow">{children}</main>
         </div>

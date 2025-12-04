@@ -1,33 +1,41 @@
 import React, { useState } from "react";
-import { Check, X, MessageSquare, AlertCircle, Search } from "lucide-react";
+import {
+    Check,
+    X,
+    MessageSquare,
+    AlertCircle,
+    Search,
+    HandCoins,
+} from "lucide-react";
 import { router } from "@inertiajs/react";
 import { toast } from "sonner";
 import ModalRechazo from "../components/modal/ModalRechazo";
+import ModalAbono from "../components/modal/ModalAbono";
 
 export default function Tabla({ notas }) {
     // 1. ESTADOS
     const [searchCodigo, setSearchCodigo] = useState("");
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isModalAbonoOpen, setIsModalAbonoOpen] = useState(false);
     const [notaParaRechazar, setNotaParaRechazar] = useState(null);
+    const [notaParaAbonar, setNotaParaAbonar] = useState(null);
 
     // 2. LÓGICA DE FILTRADO (Cliente)
-    // Filtramos las notas que vienen de props antes de renderizarlas
     const notasFiltradas =
         notas?.filter((nota) => {
             if (!searchCodigo) return true;
             const busqueda = searchCodigo.toLowerCase();
             const codigo = nota.co_cli?.toString().toLowerCase() || "";
             const cliente = nota.cli_des?.toLowerCase() || "";
-            // Busca por código O por nombre de cliente
             return codigo.includes(busqueda) || cliente.includes(busqueda);
         }) || [];
 
     // 3. BACKEND: Aprobar
     const handleApprove = (nota) => {
         router.post(
-            `/nota/${nota.fact_num}`, // Asegúrate que esta ruta exista en Laravel
+            `/nota/${nota.fact_num}`,
             {
-                cumplio: 1, // 1 = True
+                cumplio: 1,
                 comentario: null,
             },
             {
@@ -45,7 +53,7 @@ export default function Tabla({ notas }) {
         setIsModalOpen(true);
     };
 
-    // 5. BACKEND: Confirmar Rechazo (Desde el Modal)
+    // 5. BACKEND: Confirmar Rechazo
     const handleConfirmReject = (comentario) => {
         return new Promise((resolve, reject) => {
             if (!notaParaRechazar) {
@@ -56,7 +64,7 @@ export default function Tabla({ notas }) {
             router.post(
                 `/nota/${notaParaRechazar.fact_num}`,
                 {
-                    cumplio: 0, // 0 = False
+                    cumplio: 0,
                     comentario: comentario,
                 },
                 {
@@ -65,31 +73,69 @@ export default function Tabla({ notas }) {
                         toast.success("Nota rechazada correctamente");
                         setIsModalOpen(false);
                         setNotaParaRechazar(null);
-                        resolve(); // Cierra el loading del modal
+                        resolve();
                     },
                     onError: (errors) => {
                         toast.error("Error al guardar el rechazo");
                         console.error(errors);
-                        reject(); // Mantiene el modal abierto
+                        reject();
                     },
                 }
             );
         });
     };
 
-    // 6. ESTILOS DINÁMICOS
+    // 4. BACKEND: Preparar abono
+    const handleAbonoClick = (nota) => {
+        setNotaParaAbonar(nota);
+        setIsModalAbonoOpen(true);
+    };
+
+    // 5. BACKEND: Confirmar abono
+    const handleConfirmAbono = (comentario) => {
+        return new Promise((resolve, reject) => {
+            if (!notaParaAbonar) {
+                reject();
+                return;
+            }
+
+            router.post(
+                `/nota/${notaParaAbonar.fact_num}`,
+                {
+                    cumplio: 2,
+                    comentario: comentario,
+                },
+                {
+                    preserveScroll: true,
+                    onSuccess: () => {
+                        toast.success("Nota abonada correctamente");
+                        // CORRECCIÓN 1: Usar el setter (setIs...), no la variable de estado
+                        setIsModalAbonoOpen(false);
+                        setNotaParaAbonar(null);
+                        resolve();
+                    },
+                    onError: (errors) => {
+                        toast.error("Error al guardar el abono");
+                        console.error(errors);
+                        reject();
+                    },
+                }
+            );
+        });
+    };
+
     const getRowClass = (nota, index) => {
         const base = "transition-colors duration-200";
         const zebra = index % 2 === 0 ? "bg-white" : "bg-gray-50";
 
-        // Usamos == para comparar 1 con true o '1' sin problemas
+        if (nota.cumplio == 2)
+            return "bg-yellow-50 border-l-4 border-yellow-500";
         if (nota.cumplio == 1) return "bg-green-50 border-l-4 border-green-500";
         if (nota.cumplio == 0) return "bg-red-50 border-l-4 border-red-500";
 
         return `${zebra} border-l-4 border-transparent hover:bg-gray-100`;
     };
 
-    // 7. RENDERIZADO VACÍO
     if (!notas || notas.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center p-12 bg-white rounded-xl border border-gray-200 shadow-sm text-center">
@@ -221,7 +267,7 @@ export default function Tabla({ notas }) {
                                         <span
                                             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium shadow-sm ${
                                                 nota.dias_restantes <= 10 &&
-                                                !nota.cumplio
+                                                nota.cumplio !== 1
                                                     ? "bg-red-100 text-red-800"
                                                     : "bg-emerald-100 text-emerald-800"
                                             }`}
@@ -231,10 +277,13 @@ export default function Tabla({ notas }) {
                                     </td>
 
                                     <td className="px-6 py-4 whitespace-nowrap text-sm max-w-[150px]">
-                                        {nota.cumplio == 0 &&
-                                        nota.comentario ? (
+                                        {nota.comentario ? (
                                             <div
-                                                className="flex items-center gap-2 text-red-600 italic truncate"
+                                                className={`flex items-center gap-2 italic truncate ${
+                                                    nota.cumplio == 2
+                                                        ? "text-yellow-600"
+                                                        : "text-red-600"
+                                                }`}
                                                 title={nota.comentario}
                                             >
                                                 <MessageSquare className="w-4 h-4 shrink-0" />
@@ -255,7 +304,10 @@ export default function Tabla({ notas }) {
                                                 onClick={() =>
                                                     handleApprove(nota)
                                                 }
-                                                disabled={nota.cumplio !== null}
+                                                disabled={
+                                                    nota.cumplio !== 2 &&
+                                                    nota.cumplio !== null
+                                                }
                                                 className={`p-2 rounded-lg transition-all shadow-sm ${
                                                     nota.cumplio == 1
                                                         ? "bg-green-600 text-white ring-2 ring-green-300 ring-offset-1"
@@ -268,9 +320,30 @@ export default function Tabla({ notas }) {
 
                                             <button
                                                 onClick={() =>
+                                                    handleAbonoClick(nota)
+                                                }
+                                                disabled={
+                                                    nota.cumplio !== 2 &&
+                                                    nota.cumplio !== null
+                                                }
+                                                className={`p-2 rounded-lg transition-all shadow-sm ${
+                                                    nota.cumplio == 2
+                                                        ? "bg-yellow-600 text-white ring-2 ring-yellow-300 ring-offset-1"
+                                                        : "bg-white border border-gray-200 text-yellow-600 hover:bg-yellow-50 hover:border-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                }`}
+                                                title="Abonar"
+                                            >
+                                                <HandCoins className="w-5 h-5" />
+                                            </button>
+
+                                            <button
+                                                onClick={() =>
                                                     handleRejectClick(nota)
                                                 }
-                                                disabled={nota.cumplio !== null}
+                                                disabled={
+                                                    nota.cumplio !== 2 &&
+                                                    nota.cumplio !== null
+                                                }
                                                 className={`p-2 rounded-lg transition-all shadow-sm ${
                                                     nota.cumplio == 0
                                                         ? "bg-red-600 text-white ring-2 ring-red-300 ring-offset-1"
@@ -305,6 +378,13 @@ export default function Tabla({ notas }) {
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 onConfirm={handleConfirmReject}
+            />
+
+            {/* CORRECCIÓN 2: Usar isModalAbonoOpen en lugar de isModalOpen */}
+            <ModalAbono
+                isOpen={isModalAbonoOpen}
+                onClose={() => setIsModalAbonoOpen(false)}
+                onConfirm={handleConfirmAbono}
             />
         </div>
     );
