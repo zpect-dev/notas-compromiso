@@ -7,11 +7,10 @@ import ModalRechazo from "../components/modal/ModalRechazo";
 export default function TablaMovimientos({ movimientos }) {
     // 1. ESTADOS
     const [searchTerm, setSearchTerm] = useState("");
-    const [filterStatus, setFilterStatus] = useState("todos"); // 'todos', 'pendientes', 'aprobados'
+    const [filterStatus, setFilterStatus] = useState("todos");
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [movimientoParaRechazar, setMovimientoParaRechazar] = useState(null);
 
-    // Helper para formatear fecha a d-m-Y
     const formatDate = (dateString) => {
         if (!dateString) return "-";
         const date = new Date(dateString);
@@ -22,28 +21,22 @@ export default function TablaMovimientos({ movimientos }) {
         return `${day}-${month}-${year}`;
     };
 
-    // 2. LÓGICA DE FILTRADO COMBINADA (Búsqueda + Estado)
+    // 2. LÓGICA DE FILTRADO
     const movimientosFiltrados =
         movimientos?.filter((mov) => {
-            // A. Filtro de Texto
             const busqueda = searchTerm.toLowerCase();
             const nroMov = mov.mov_num?.toString().toLowerCase() || "";
             const caja = mov.caja?.descrip?.toLowerCase() || "";
-            const descripcion = mov.descrip?.toLowerCase() || "";
-            const adicional = mov.campo4?.toLowerCase() || "";
 
             const matchesSearch =
                 !searchTerm ||
                 nroMov.includes(busqueda) ||
                 caja.includes(busqueda);
 
-            // B. Filtro de Estado (Botones)
             let matchesStatus = true;
             if (filterStatus === "pendientes") {
-                // Pendiente es cuando NO tiene movimiento asociado
                 matchesStatus = mov.movimiento === null;
             } else if (filterStatus === "aprobados") {
-                // Aprobado es cuando SI tiene movimiento asociado
                 matchesStatus = mov.movimiento !== null;
             }
 
@@ -64,13 +57,12 @@ export default function TablaMovimientos({ movimientos }) {
         );
     };
 
-    // 4. BACKEND: Preparar Rechazo
+    // 4. BACKEND: Rechazar
     const handleRejectClick = (mov) => {
         setMovimientoParaRechazar(mov);
         setIsModalOpen(true);
     };
 
-    // 5. BACKEND: Confirmar Rechazo
     const handleConfirmReject = (comentario) => {
         return new Promise((resolve, reject) => {
             if (!movimientoParaRechazar) {
@@ -88,7 +80,7 @@ export default function TablaMovimientos({ movimientos }) {
                         setMovimientoParaRechazar(null);
                         resolve();
                     },
-                    onError: (errors) => {
+                    onError: () => {
                         toast.error("Error al procesar el rechazo");
                         reject();
                     },
@@ -97,29 +89,7 @@ export default function TablaMovimientos({ movimientos }) {
         });
     };
 
-    // 6. LÓGICA DE COLORES
-    const getRowClass = (mov, index) => {
-        const zebra = index % 2 === 0 ? "bg-white" : "bg-gray-50";
-        const defaultStyle = `${zebra} border-l-4 border-transparent hover:bg-gray-100`;
-
-        if (
-            mov.campo4 === null ||
-            mov.campo4 === undefined ||
-            String(mov.campo4).trim() === ""
-        ) {
-            return defaultStyle;
-        }
-
-        const montoD = parseFloat(mov.monto_d || 0);
-        const campo4 = parseFloat(mov.campo4 || 0);
-
-        if (Math.abs(montoD - campo4) < 0.01) {
-            return "bg-green-50 border-l-4 border-green-500";
-        } else {
-            return "bg-red-50 border-l-4 border-red-500";
-        }
-    };
-
+    // 5. FORMATO DE MONEDA ESTÁNDAR (Sin forzar signo)
     const formatCurrency = (amount) => {
         if (amount === null || amount === undefined || amount === "")
             return "-";
@@ -129,7 +99,45 @@ export default function TablaMovimientos({ movimientos }) {
         }).format(amount);
     };
 
-    // 7. RENDERIZADO VACÍO (Solo si no hay datos iniciales)
+    // 5b. NUEVO: FORMATO PARA DIFERENCIA (Fuerza el signo + o -)
+    const formatCurrencyDiff = (amount) => {
+        if (amount === null || amount === undefined || isNaN(amount))
+            return "-";
+        return new Intl.NumberFormat("es-VE", {
+            style: "currency",
+            currency: "USD",
+            signDisplay: "always", // <--- Muestra + o - siempre
+        }).format(amount);
+    };
+
+    // 6. LÓGICA DE COLORES DE FILA (ACTUALIZADA)
+    const getRowClass = (mov, index) => {
+        const zebra = index % 2 === 0 ? "bg-white" : "bg-gray-50";
+        const defaultStyle = `${zebra} border-l-4 border-transparent hover:bg-gray-100`;
+
+        // Si no hay pagos registrados, estilo por defecto
+        if (
+            mov.abonos_sum_monto_h === null ||
+            mov.abonos_sum_monto_h === undefined
+        ) {
+            return defaultStyle;
+        }
+
+        const montoDeuda = parseFloat(mov.monto_d || 0);
+        const montoPagado = parseFloat(mov.abonos_sum_monto_h || 0);
+
+        // Calculamos: Pagado - Deuda
+        const diferencia = montoPagado - montoDeuda;
+
+        // Si diferencia es >= 0 (o casi 0 por decimales), es VERDE (Saldo a favor o pago exacto)
+        if (diferencia >= -0.01) {
+            return "bg-green-50 border-l-4 border-green-500 hover:bg-green-100";
+        } else {
+            // Si es negativo (Deuda), es ROJO
+            return "bg-red-50 border-l-4 border-red-500 hover:bg-red-100";
+        }
+    };
+
     if (!movimientos || movimientos.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center p-12 bg-white rounded-xl border border-gray-200 shadow-sm text-center">
@@ -146,113 +154,70 @@ export default function TablaMovimientos({ movimientos }) {
 
     return (
         <div className="space-y-4">
-            {/* --- BARRA DE CONTROL (BUSQUEDA + FILTROS) --- */}
+            {/* --- BARRA DE CONTROL --- */}
             <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                {/* A. Input de Búsqueda */}
                 <div className="relative w-full md:max-w-md">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <Search className="h-4 w-4 text-gray-400" />
                     </div>
                     <input
                         type="text"
-                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition duration-150 ease-in-out"
-                        placeholder="Buscar por Nro de movimiento o nombre de caja"
+                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md bg-white focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        placeholder="Buscar por Nro o caja..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
 
-                {/* B. Botones de Filtro (Pendientes / Aprobados) */}
                 <div className="flex items-center gap-2 w-full md:w-auto">
                     <div className="flex p-1 bg-gray-100 rounded-lg w-full md:w-auto">
-                        <button
-                            onClick={() => setFilterStatus("todos")}
-                            className={`flex-1 md:flex-none px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
-                                filterStatus === "todos"
-                                    ? "bg-white text-gray-900 shadow-sm"
-                                    : "text-gray-500 hover:text-gray-700"
-                            }`}
-                        >
-                            Todos
-                        </button>
-                        <button
-                            onClick={() => setFilterStatus("pendientes")}
-                            className={`flex-1 md:flex-none px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
-                                filterStatus === "pendientes"
-                                    ? "bg-white text-yellow-700 shadow-sm"
-                                    : "text-gray-500 hover:text-gray-700"
-                            }`}
-                        >
-                            Pendientes
-                        </button>
-                        <button
-                            onClick={() => setFilterStatus("aprobados")}
-                            className={`flex-1 md:flex-none px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
-                                filterStatus === "aprobados"
-                                    ? "bg-white text-green-700 shadow-sm"
-                                    : "text-gray-500 hover:text-gray-700"
-                            }`}
-                        >
-                            Aprobados
-                        </button>
+                        {["todos", "pendientes", "aprobados"].map((status) => (
+                            <button
+                                key={status}
+                                onClick={() => setFilterStatus(status)}
+                                className={`flex-1 md:flex-none px-4 py-1.5 text-sm font-medium rounded-md transition-all capitalize ${
+                                    filterStatus === status
+                                        ? "bg-white text-gray-900 shadow-sm"
+                                        : "text-gray-500 hover:text-gray-700"
+                                }`}
+                            >
+                                {status}
+                            </button>
+                        ))}
                     </div>
                 </div>
 
-                {/* C. Contador */}
                 <div className="hidden md:block text-sm text-gray-500 whitespace-nowrap">
                     {movimientosFiltrados.length} resultados
                 </div>
             </div>
 
             {/* --- TABLA --- */}
-            {/* CAMBIOS AQUÍ:
-               1. max-h-[75vh]: Define una altura máxima (aprox 75% de la pantalla).
-               2. overflow-y-auto: Habilita scroll vertical si el contenido excede la altura.
-            */}
             <div className="overflow-x-auto overflow-y-auto max-h-[75vh] shadow-lg rounded-lg border border-gray-200">
                 <table className="min-w-full divide-y divide-gray-200">
-                    {/* CAMBIOS AQUÍ:
-                       1. sticky top-0: Mantiene el encabezado fijo arriba.
-                       2. z-10: Asegura que el encabezado esté por encima del contenido al hacer scroll.
-                    */}
                     <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                Mov. Nro
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                Caja
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                Tipo
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                Egreso
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                Ingreso
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                Diferencia
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                Descripción
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                Estado
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                Aprobado por
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                Observacion
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                Fecha de aprobacion
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                Acciones
-                            </th>
+                            {[
+                                "Mov. Nro",
+                                "Caja",
+                                "Tipo",
+                                "Egreso",
+                                "Ingreso",
+                                "Diferencia",
+                                "Descripción",
+                                "Estado",
+                                "Aprobado por",
+                                // "Obs",
+                                "Fecha",
+                                "Acciones",
+                            ].map((header) => (
+                                <th
+                                    key={header}
+                                    className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider"
+                                >
+                                    {header}
+                                </th>
+                            ))}
                         </tr>
                     </thead>
 
@@ -277,27 +242,53 @@ export default function TablaMovimientos({ movimientos }) {
                                             {mov.tipo_op}
                                         </span>
                                     </td>
+
+                                    {/* COLUMNA: EGRESO / DEUDA */}
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-bold">
                                         <div className="text-gray-800">
                                             {formatCurrency(mov.monto_d)}
                                         </div>
                                     </td>
+
+                                    {/* COLUMNA: INGRESO / PAGADO */}
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-bold">
                                         <div className="text-gray-600">
-                                            {formatCurrency(mov.campo4)}
+                                            {formatCurrency(
+                                                mov.abonos_sum_monto_h
+                                            )}
                                         </div>
                                     </td>
+
+                                    {/* COLUMNA: DIFERENCIA (MODIFICADA) */}
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-bold">
-                                        <div className="text-gray-600">
-                                            {mov.campo4 === null ||
-                                            mov.campo4 === undefined ||
-                                            String(mov.campo4).trim() === ""
-                                                ? "-"
-                                                : formatCurrency(
-                                                      mov.monto_d - mov.campo4
-                                                  )}
-                                        </div>
+                                        {(() => {
+                                            const pagado = parseFloat(
+                                                mov.abonos_sum_monto_h || 0
+                                            );
+                                            const deuda = parseFloat(
+                                                mov.monto_d || 0
+                                            );
+                                            const diff = pagado - deuda;
+
+                                            // Verde si es positivo/cero, Rojo si es negativo
+                                            const colorClass =
+                                                diff >= -0.01
+                                                    ? "text-green-600"
+                                                    : "text-red-600";
+
+                                            return (
+                                                <div className={colorClass}>
+                                                    {mov.abonos_sum_monto_h ===
+                                                    null
+                                                        ? "-"
+                                                        : formatCurrencyDiff(
+                                                              diff
+                                                          )}
+                                                </div>
+                                            );
+                                        })()}
                                     </td>
+
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                         <div
                                             className="max-w-[200px] truncate"
@@ -307,7 +298,6 @@ export default function TablaMovimientos({ movimientos }) {
                                         </div>
                                     </td>
 
-                                    {/* ESTADO */}
                                     <td className="px-6 py-4 whitespace-nowrap text-sm max-w-[150px]">
                                         {mov.cumplio == 0 && mov.comentario ? (
                                             <div
@@ -329,33 +319,21 @@ export default function TablaMovimientos({ movimientos }) {
                                             </span>
                                         )}
                                     </td>
-
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                        <div
-                                            className="max-w-[200px] truncate"
-                                            title={mov.movimiento?.user_id}
-                                        >
-                                            {mov.movimiento?.user_id || "-"}
-                                        </div>
+                                        {mov.movimiento?.usuario.usuario || "-"}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                    {/* <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                         <div
                                             className="max-w-[200px] truncate"
                                             title={mov.movimiento?.observacion}
                                         >
                                             {mov.movimiento?.observacion || "-"}
                                         </div>
-                                    </td>
+                                    </td> */}
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                        <div
-                                            className="max-w-[200px] truncate"
-                                            title={mov.movimiento?.created_at}
-                                        >
-                                            {/* Usamos created_at para la fecha de aprobación, o mov.fecha para la fecha de caja */}
-                                            {formatDate(
-                                                mov.movimiento?.created_at
-                                            ) || "-"}
-                                        </div>
+                                        {formatDate(
+                                            mov.movimiento?.created_at
+                                        ) || "-"}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-center">
                                         <div className="flex items-center justify-center gap-3">
@@ -369,10 +347,9 @@ export default function TablaMovimientos({ movimientos }) {
                                                 className={`p-2 rounded-lg transition-all shadow-sm ${
                                                     mov.movimiento?.aprobado ==
                                                     1
-                                                        ? "bg-green-600 text-white ring-2 ring-green-300 ring-offset-1"
-                                                        : "bg-white border border-gray-200 text-green-600 hover:bg-green-50 hover:border-green-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        ? "bg-green-600 text-white ring-2 ring-green-300"
+                                                        : "bg-white border border-gray-200 text-green-600 hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed"
                                                 }`}
-                                                title="Aprobar"
                                             >
                                                 <Check className="w-5 h-5" />
                                             </button>

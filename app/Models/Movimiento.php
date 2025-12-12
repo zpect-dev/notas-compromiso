@@ -17,6 +17,6 @@ class Movimiento extends Model
 
     public function usuario()
     {
-        return $this->belongsTo(Usuario::class, 'user_id', 'id_u');
+        return $this->belongsTo(Usuario::class, 'user_id', 'id');
     }
 }

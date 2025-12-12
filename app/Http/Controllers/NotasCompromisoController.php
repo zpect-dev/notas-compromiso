@@ -76,6 +76,9 @@ class NotasCompromisoController extends Controller
 
     public function store(Request $request, NotaCompromiso $nota)
     {
+        if (! $request->session()->has('usuario')) {
+            return redirect('/login');
+        }
         $request->validate([
             'comentario' => ['nullable', 'string'],
             'cumplio' => ['required', 'integer', 'in:0,1,2'],

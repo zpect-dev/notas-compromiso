@@ -31,4 +31,9 @@ class MovimientoCaja extends Model
     {
         return trim($value);
     }
+
+    public function abonos()
+    {
+        return $this->hasMany(self::class, 'aux02', 'mov_num');
+    }
 }
