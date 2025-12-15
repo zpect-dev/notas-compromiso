@@ -12,9 +12,21 @@ use Inertia\Inertia;
 class JuridicoController extends Controller
 {
     public function index(Request $request) {
-        // Listar Clientes Inactivos (En Jurídico)
+        // Listar Clientes Inactivos (En Jurídico) con sus saldos y morosidad
         $clientes = Cliente::where('inactivo', 1)
             ->select('co_cli as codigo', 'cli_des as descripcion', 'rif')
+            ->addSelect([
+                'saldo_por_cobrar' => Documento::selectRaw('SUM(saldo)')
+                    ->whereColumn('docum_cc.co_cli', 'clientes.co_cli')
+                    ->where('tipo_doc', 'FACT')
+                    ->where('anulado', 0)
+                    ->where('saldo', '>', 0),
+                'morosidad_maxima' => Documento::selectRaw('MAX(DATEDIFF(day, fec_venc, GETDATE()))')
+                    ->whereColumn('docum_cc.co_cli', 'clientes.co_cli')
+                    ->where('tipo_doc', 'FACT')
+                    ->where('anulado', 0)
+                    ->where('saldo', '>', 0)
+            ])
             ->orderBy('cli_des', 'asc')
             ->get();
 
