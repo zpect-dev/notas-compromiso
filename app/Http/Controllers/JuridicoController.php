@@ -16,7 +16,7 @@ class JuridicoController extends Controller
         $clientes = Cliente::where('inactivo', 1)
             ->select('co_cli as codigo', 'cli_des as descripcion', 'rif')
             ->addSelect([
-                'saldo_por_cobrar' => Documento::selectRaw('SUM(saldo)')
+                'saldo_por_cobrar' => Documento::selectRaw('SUM((saldo / tasa))')
                     ->whereColumn('docum_cc.co_cli', 'clientes.co_cli')
                     ->where('tipo_doc', 'FACT')
                     ->where('anulado', 0)
@@ -39,44 +39,44 @@ class JuridicoController extends Controller
         // Verificar cliente
         $cliente = Cliente::where('co_cli', $clienteId)->firstOrFail();
 
-        // Obtener facturas del cliente con la misma lógica que tenías antes
         $facturas = Documento::query()
             ->select([
-                // Campos directos de la tabla de documentos
+                // Campos simples (Laravel los maneja bien)
                 'docum_cc.co_cli as codigo',
                 'docum_cc.nro_doc as nro_factura',
-                'docum_cc.monto_net as monto_factura', 
                 'docum_cc.fec_emis as emision',
                 'docum_cc.fec_venc as vencimiento',
-                'docum_cc.monto_net as saldo_inicial', 
-                'docum_cc.saldo as saldo_actual',
                 'docum_cc.observa as observacion',
                 
-                // Campos de la relación (Join)
+                // --- CORRECCIÓN AQUÍ: Usar DB::raw para las divisiones ---
+                DB::raw('(docum_cc.monto_net / docum_cc.tasa) as monto_factura'),
+                DB::raw('(docum_cc.monto_net / docum_cc.tasa) as saldo_inicial'),
+                DB::raw('(docum_cc.saldo / docum_cc.tasa) as saldo_actual'),
+                
+                // Campos de relación
                 DB::raw("RTRIM(clientes.cli_des) as cliente"),
 
-                // Cálculo de MOROSIDAD (Días vencidos)
-                // Si saldo <= 0 (Recuperado), fecha cobro - fecha vencimiento. Si no, fecha actual - fecha vencimiento.
+                // Morosidad (Ya lo tenías en DB::raw, está bien)
                 DB::raw("
                     CASE 
-                        WHEN docum_cc.saldo <= 0 THEN 
-                            DATEDIFF(day, docum_cc.fec_venc, (
+                        WHEN (docum_cc.saldo / docum_cc.tasa) <= 0.10 THEN 
+                            DATEDIFF(day, docum_cc.fec_venc, ISNULL((
                                 SELECT TOP 1 c.fec_cob 
                                 FROM reng_cob rc 
                                 JOIN cobros c ON rc.cob_num = c.cob_num 
                                 WHERE rc.doc_num = docum_cc.nro_doc 
                                 AND rc.tp_doc_cob = 'FACT' 
                                 ORDER BY c.fec_cob DESC
-                            ))
+                            ), docum_cc.fec_emis))
                         ELSE 
                             DATEDIFF(day, docum_cc.fec_venc, GETDATE()) 
                     END as dias_morosidad
                 "),
                 
-                // Estado Recuperado (Logica visual de tu excel)
-                DB::raw("CASE WHEN docum_cc.saldo <= 0 THEN 'RECUPERADO' ELSE 'PENDIENTE' END as estado_recuperacion"),
+                // Estado
+                DB::raw("CASE WHEN (docum_cc.saldo / docum_cc.tasa) <= 0.10 THEN 'RECUPERADO' ELSE 'PENDIENTE' END as estado_recuperacion"),
 
-                // Subconsulta para fecha del último abono
+                // Subconsultas Eloquent
                 'ultimo_cobro_fecha' => RenglonCobro::select('cobros.fec_cob')
                     ->join('cobros', 'reng_cob.cob_num', '=', 'cobros.cob_num')
                     ->whereColumn('reng_cob.doc_num', 'docum_cc.nro_doc') 
@@ -84,8 +84,7 @@ class JuridicoController extends Controller
                     ->latest('cobros.fec_cob')
                     ->limit(1),
 
-                // Subconsulta para monto del último abono
-                'ultimo_cobro_monto' => RenglonCobro::select('reng_cob.neto') 
+                'ultimo_cobro_monto' => RenglonCobro::selectRaw('reng_cob.neto / docum_cc.tasa') 
                     ->join('cobros', 'reng_cob.cob_num', '=', 'cobros.cob_num')
                     ->whereColumn('reng_cob.doc_num', 'docum_cc.nro_doc')
                     ->where('reng_cob.tp_doc_cob', 'FACT')
@@ -93,9 +92,9 @@ class JuridicoController extends Controller
                     ->limit(1)
             ])
             ->join('clientes', 'docum_cc.co_cli', '=', 'clientes.co_cli')
-            ->where('docum_cc.tipo_doc', 'FACT') // Solo Facturas
-            ->where('docum_cc.anulado', 0) // Que no estén anuladas
-            ->where('docum_cc.co_cli', $clienteId) // FILTRO POR CLIENTE
+            ->where('docum_cc.tipo_doc', 'FACT') 
+            ->where('docum_cc.anulado', 0) 
+            ->where('docum_cc.co_cli', $clienteId) 
             ->orderBy('docum_cc.fec_emis', 'desc')
             ->get();
 

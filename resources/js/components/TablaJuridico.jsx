@@ -1,5 +1,15 @@
 import React, { useState } from "react";
-import { Check, X, MessageSquare, Search, FileText, Filter, Calendar, DollarSign, AlertCircle } from "lucide-react";
+import {
+    Check,
+    X,
+    MessageSquare,
+    Search,
+    FileText,
+    Filter,
+    Calendar,
+    DollarSign,
+    AlertCircle,
+} from "lucide-react";
 import { router } from "@inertiajs/react";
 import { toast } from "sonner";
 // import ModalRechazo from "../components/modal/ModalRechazo"; // Si se requiere rechazar/observar facturas
@@ -8,7 +18,7 @@ export default function TablaJuridico({ facturas, cliente }) {
     // 1. ESTADOS
     const [searchTerm, setSearchTerm] = useState("");
     const [filterStatus, setFilterStatus] = useState("todos"); // todos, recuperados, pendientes
-   
+
     const formatDate = (dateString) => {
         if (!dateString) return "-";
         const date = new Date(dateString);
@@ -33,9 +43,9 @@ export default function TablaJuridico({ facturas, cliente }) {
 
             let matchesStatus = true;
             if (filterStatus === "pendientes") {
-                matchesStatus = fact.estado_recuperacion === 'PENDIENTE';
+                matchesStatus = fact.estado_recuperacion === "PENDIENTE";
             } else if (filterStatus === "recuperados") {
-                matchesStatus = fact.estado_recuperacion === 'RECUPERADO';
+                matchesStatus = fact.estado_recuperacion === "RECUPERADO";
             }
 
             return matchesSearch && matchesStatus;
@@ -58,10 +68,10 @@ export default function TablaJuridico({ facturas, cliente }) {
         let defaultStyle = `${zebra} border-l-4 hover:bg-gray-100 transition-colors`;
 
         // Si está recuperado (saldo <= 0) -> Verde
-        if (fact.estado_recuperacion === 'RECUPERADO') {
+        if (fact.estado_recuperacion === "RECUPERADO") {
             return `${defaultStyle} border-green-500 bg-green-50 hover:bg-green-100`;
         }
-        
+
         // Si tiene días de morosidad altos (> 90 por ejemplo) -> Rojo Intenso
         if (fact.dias_morosidad > 90) {
             return `${defaultStyle} border-red-600 bg-red-50 hover:bg-red-100`;
@@ -85,20 +95,27 @@ export default function TablaJuridico({ facturas, cliente }) {
                 <h3 className="text-lg font-medium text-gray-900">
                     Sin Facturas
                 </h3>
-                <p className="text-gray-500 mt-1">Este cliente no tiene facturas registradas en este criterio.</p>
+                <p className="text-gray-500 mt-1">
+                    Este cliente no tiene facturas registradas en este criterio.
+                </p>
             </div>
         );
     }
 
     // Totales para mostrar en cards superiores
-    const totalDeuda = facturasFiltradas.reduce((acc, curr) => acc + parseFloat(curr.saldo_actual || 0), 0);
-    const totalOriginal = facturasFiltradas.reduce((acc, curr) => acc + parseFloat(curr.monto_factura || 0), 0);
+    const totalDeuda = facturasFiltradas.reduce(
+        (acc, curr) => acc + parseFloat(curr.saldo_actual || 0),
+        0
+    );
+    const totalOriginal = facturasFiltradas.reduce(
+        (acc, curr) => acc + parseFloat(curr.monto_factura || 0),
+        0
+    );
 
     return (
         <div className="space-y-4">
             {/* --- BARRA DE CONTROL --- */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                
                 {/* BUSCADOR */}
                 <div className="md:col-span-5 relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -116,26 +133,32 @@ export default function TablaJuridico({ facturas, cliente }) {
                 {/* FILTROS DE ESTADO */}
                 <div className="md:col-span-4 flex items-center justify-center md:justify-start">
                     <div className="flex p-1 bg-gray-100 rounded-lg w-full max-w-xs">
-                        {["todos", "pendientes", "recuperados"].map((status) => (
-                            <button
-                                key={status}
-                                onClick={() => setFilterStatus(status)}
-                                className={`flex-1 px-3 py-1.5 text-xs font-bold rounded-md transition-all uppercase tracking-wide ${
-                                    filterStatus === status
-                                        ? "bg-white text-gray-900 shadow-sm scale-105"
-                                        : "text-gray-500 hover:text-gray-700"
-                                }`}
-                            >
-                                {status}
-                            </button>
-                        ))}
+                        {["todos", "pendientes", "recuperados"].map(
+                            (status) => (
+                                <button
+                                    key={status}
+                                    onClick={() => setFilterStatus(status)}
+                                    className={`flex-1 px-3 py-1.5 text-xs font-bold rounded-md transition-all uppercase tracking-wide ${
+                                        filterStatus === status
+                                            ? "bg-white text-gray-900 shadow-sm scale-105"
+                                            : "text-gray-500 hover:text-gray-700"
+                                    }`}
+                                >
+                                    {status}
+                                </button>
+                            )
+                        )}
                     </div>
                 </div>
 
                 {/* INFO RESUMEN */}
                 <div className="md:col-span-3 text-right">
-                    <div className="text-xs text-gray-500 uppercase font-semibold">Deuda Total Filtrada</div>
-                    <div className="text-xl font-bold text-red-600 font-mono tracking-tight">{formatCurrency(totalDeuda)}</div>
+                    <div className="text-xs text-gray-500 uppercase font-semibold">
+                        Deuda Total Filtrada
+                    </div>
+                    <div className="text-xl font-bold text-red-600 font-mono tracking-tight">
+                        {formatCurrency(totalDeuda)}
+                    </div>
                 </div>
             </div>
 
@@ -180,29 +203,33 @@ export default function TablaJuridico({ facturas, cliente }) {
                                             </span>
                                         </div>
                                     </td>
-                                    
+
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                         {formatDate(fact.emision)}
                                     </td>
-                                    
+
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                         <div className="flex items-center gap-1 font-medium">
                                             <Calendar className="w-3 h-3 text-gray-400" />
                                             {formatDate(fact.vencimiento)}
                                         </div>
                                     </td>
-                                    
+
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         {fact.dias_morosidad > 0 ? (
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                                                fact.dias_morosidad > 90 
-                                                ? "bg-red-100 text-red-800"
-                                                : "bg-orange-100 text-orange-800"
-                                            }`}>
+                                            <span
+                                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                                                    fact.dias_morosidad > 90
+                                                        ? "bg-red-100 text-red-800"
+                                                        : "bg-orange-100 text-orange-800"
+                                                }`}
+                                            >
                                                 {fact.dias_morosidad} días
                                             </span>
                                         ) : (
-                                            <span className="text-green-600 text-xs font-bold">Al día</span>
+                                            <span className="text-green-600 text-xs font-bold">
+                                                Al día
+                                            </span>
                                         )}
                                     </td>
 
@@ -211,33 +238,51 @@ export default function TablaJuridico({ facturas, cliente }) {
                                     </td>
 
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className={`text-sm font-bold font-mono ${
-                                            parseFloat(fact.saldo_actual) > 0.01 ? "text-red-600" : "text-green-600"
-                                        }`}>
+                                        <div
+                                            className={`text-sm font-bold font-mono ${
+                                                parseFloat(fact.saldo_actual) >
+                                                0.01
+                                                    ? "text-red-600"
+                                                    : "text-green-600"
+                                            }`}
+                                        >
                                             {formatCurrency(fact.saldo_actual)}
                                         </div>
                                     </td>
 
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                         {fact.estado_recuperacion === 'RECUPERADO' ? (
-                                            <span className="inline-flex items-center px-2 py-1 rounded text-xs font-bold bg-green-100 text-green-800 border border-green-200">
-                                                <Check className="w-3 h-3 mr-1" /> RECUPERADO
+                                        {fact.estado_recuperacion ===
+                                        "RECUPERADO" ? (
+                                            <span className="inline-flex w-28 justify-center items-center px-2 py-1 rounded text-xs font-bold bg-green-100 text-green-800 border border-green-200">
+                                                <Check className="w-3 h-3 mr-1" />{" "}
+                                                RECUPERADO
                                             </span>
-                                         ) : (
-                                            <span className="inline-flex items-center px-2 py-1 rounded text-xs font-bold bg-yellow-100 text-yellow-800 border border-yellow-200">
-                                                <AlertCircle className="w-3 h-3 mr-1" /> PENDIENTE
+                                        ) : (
+                                            <span className="inline-flex w-28 justify-center items-center px-2 py-1 rounded text-xs font-bold bg-yellow-100 text-yellow-800 border border-yellow-200">
+                                                <AlertCircle className="w-3 h-3 mr-1" />{" "}
+                                                PENDIENTE
                                             </span>
-                                         )}
+                                        )}
                                     </td>
 
                                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                                         {fact.ultimo_cobro_fecha ? (
                                             <div className="flex flex-col">
-                                                <span className="font-bold text-gray-700">{formatDate(fact.ultimo_cobro_fecha)}</span>
-                                                <span className="text-xs text-green-600 font-medium">{formatCurrency(fact.ultimo_cobro_monto)}</span>
+                                                <span className="font-bold text-gray-700">
+                                                    {formatDate(
+                                                        fact.ultimo_cobro_fecha
+                                                    )}
+                                                </span>
+                                                <span className="text-xs text-green-600 font-medium">
+                                                    {formatCurrency(
+                                                        fact.ultimo_cobro_monto
+                                                    )}
+                                                </span>
                                             </div>
                                         ) : (
-                                            <span className="text-gray-400 text-xs">- Sin abonos -</span>
+                                            <span className="text-gray-400 text-xs">
+                                                - Sin abonos -
+                                            </span>
                                         )}
                                     </td>
 
@@ -259,8 +304,13 @@ export default function TablaJuridico({ facturas, cliente }) {
                                 >
                                     <div className="flex flex-col items-center">
                                         <Filter className="w-10 h-10 text-gray-200 mb-3" />
-                                        <p className="font-medium text-gray-600">No se encontraron facturas</p>
-                                        <p className="text-sm">Prueba ajustando los filtros de búsqueda.</p>
+                                        <p className="font-medium text-gray-600">
+                                            No se encontraron facturas
+                                        </p>
+                                        <p className="text-sm">
+                                            Prueba ajustando los filtros de
+                                            búsqueda.
+                                        </p>
                                     </div>
                                 </td>
                             </tr>
@@ -268,7 +318,7 @@ export default function TablaJuridico({ facturas, cliente }) {
                     </tbody>
                 </table>
             </div>
-            
+
             <div className="text-xs text-gray-400 text-center mt-4">
                 Mostrando {facturasFiltradas.length} documentos
             </div>

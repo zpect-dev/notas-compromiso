@@ -248,7 +248,7 @@ export default function Index({ clientes }) {
                                                     </p>
                                                 )}
                                             </div>
-                                            <div className="ml-4 flex-shrink-0 self-center">
+                                            <div className="ml-4 shrink-0 self-center">
                                                 <ChevronRight
                                                     className={`w-5 h-5 group-hover:translate-x-1 transition-all ${status.iconColor}`}
                                                 />
