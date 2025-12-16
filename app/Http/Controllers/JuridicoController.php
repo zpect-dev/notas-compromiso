@@ -8,6 +8,8 @@ use App\Models\Cliente;
 use App\Models\RenglonCobro;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use App\Services\Multimedia;
+use App\Models\JuridicoArchivo;
 
 class JuridicoController extends Controller
 {
@@ -38,6 +40,34 @@ class JuridicoController extends Controller
     public function show(Request $request, $clienteId) {
         // Verificar cliente
         $cliente = Cliente::where('co_cli', $clienteId)->firstOrFail();
+
+        // Obtener archivos
+        $archivosRegistro = JuridicoArchivo::firstOrCreate(
+            ['co_cli' => $clienteId],
+            []
+        );
+
+        $camposArchivos = [
+            'solicitud_pago',
+            'retiro_mercancia',
+            'convenio_pago',
+            'frecuencia_convenio',
+            'cantidad_pagar',
+            'cobranza_extrajudicial'
+        ];
+
+        $archivos = [];
+        $trimmedClienteId = trim($clienteId);
+
+        foreach ($camposArchivos as $campo) {
+            $filename = $archivosRegistro->$campo;
+            if ($filename) {
+                // Construir URL: /storage/uploads/juridico/{cliente}/filename
+                $archivos[$campo] = asset("storage/uploads/juridico/{$trimmedClienteId}/{$filename}");
+            } else {
+                $archivos[$campo] = null;
+            }
+        }
 
         $facturas = Documento::query()
             ->select([
@@ -104,7 +134,32 @@ class JuridicoController extends Controller
                 'descripcion' => $cliente->cli_des,
                 'rif' => $cliente->rif
             ],
-            'facturas' => $facturas
+            'facturas' => $facturas,
+            'archivos' => $archivos
         ]);
+    }
+
+    public function subirArchivo(Request $request, $clienteId) {
+        $request->validate([
+            'archivo' => 'required|file|mimes:pdf|max:102400', // Max 10MB
+            'tipo' => 'required|in:solicitud_pago,retiro_mercancia,convenio_pago,frecuencia_convenio,cantidad_pagar,cobranza_extrajudicial'
+        ]);
+
+        $tipo = $request->input('tipo');
+        $file = $request->file('archivo');
+
+        $multimedia = new Multimedia();
+        $nameImage = $multimedia->guardarArchivoPdf($file, 'juridico', trim($clienteId));
+        
+        if (!$nameImage) {
+            return back()->with('error', 'Error al subir el archivo');
+        }
+
+        JuridicoArchivo::updateOrCreate(
+            ['co_cli' => $clienteId],
+            [$tipo => $nameImage]
+        );
+
+        return back()->with('success', 'Archivo subido correctamente');
     }
 }

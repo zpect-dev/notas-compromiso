@@ -71,3 +71,4 @@ Route::post('/movimiento/{movimiento:mov_num}', [MovimientosCajaController::clas
 
 Route::get('/juridico', [JuridicoController::class, 'index'])->name('juridico.index');
 Route::get('/juridico/{cliente}', [JuridicoController::class, 'show'])->name('juridico.show');
+Route::post('/juridico/{cliente}/archivo', [JuridicoController::class, 'subirArchivo'])->name('juridico.archivo');

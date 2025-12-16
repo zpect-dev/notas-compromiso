@@ -14,7 +14,7 @@ import { router } from "@inertiajs/react";
 import { toast } from "sonner";
 // import ModalRechazo from "../components/modal/ModalRechazo"; // Si se requiere rechazar/observar facturas
 
-export default function TablaJuridico({ facturas, cliente }) {
+export default function TablaJuridico({ facturas, cliente, archivos }) {
     // 1. ESTADOS
     const [searchTerm, setSearchTerm] = useState("");
     const [filterStatus, setFilterStatus] = useState("todos"); // todos, recuperados, pendientes
@@ -112,8 +112,83 @@ export default function TablaJuridico({ facturas, cliente }) {
         0
     );
 
+    // 7. AR CHIVOS
+    const [uploadingKey, setUploadingKey] = useState(null);
+
+    const handleFileClick = (key, url) => {
+        if (url) {
+            window.open(url, "_blank");
+        } else {
+            setUploadingKey(key);
+            document.getElementById("fileInput").click();
+        }
+    };
+
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (!file || !uploadingKey) return;
+
+        const formData = new FormData();
+        formData.append("archivo", file);
+        formData.append("tipo", uploadingKey);
+
+        router.post(`/juridico/${cliente.codigo.trim()}/archivo`, formData, {
+            onSuccess: () => {
+                toast.success("Archivo subido correctamente");
+                setUploadingKey(null);
+            },
+            onError: () => {
+                toast.error("Error al subir el archivo");
+                setUploadingKey(null);
+            },
+        });
+
+        // Reset input
+        e.target.value = null;
+    };
+
+    const fileButtons = [
+        { key: "solicitud_pago", label: "Solicitud de pago" },
+        { key: "retiro_mercancia", label: "Retiro de mercancia" },
+        { key: "convenio_pago", label: "Convenio de pago" },
+        { key: "frecuencia_convenio", label: "Frecuencia convenio" },
+        { key: "cantidad_pagar", label: "Cantidad a pagar" },
+        { key: "cobranza_extrajudicial", label: "Cobranza extrajudicial" },
+    ];
+
     return (
         <div className="space-y-4">
+            {/* HIDDEN INPUT */}
+            <input
+                type="file"
+                id="fileInput"
+                className="hidden"
+                accept=".pdf"
+                onChange={handleFileChange}
+            />
+
+            {/* BOTONES ARCHIVOS */}
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                {fileButtons.map((btn) => {
+                    const url = archivos?.[btn.key];
+                    const isActive = !!url;
+
+                    return (
+                        <button
+                            key={btn.key}
+                            onClick={() => handleFileClick(btn.key, url)}
+                            className={`p-3 rounded-lg text-sm font-bold shadow-sm transition-all border ${
+                                isActive
+                                    ? "bg-yellow-300 text-yellow-900 border-yellow-400 hover:bg-yellow-400 hover:scale-105"
+                                    : "bg-gray-100 text-gray-400 border-gray-200 hover:bg-gray-200 hover:text-gray-500"
+                            }`}
+                        >
+                            {btn.label}
+                        </button>
+                    );
+                })}
+            </div>
+
             {/* --- BARRA DE CONTROL --- */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center bg-white p-4 rounded-xl shadow-sm border border-gray-200">
                 {/* BUSCADOR */}

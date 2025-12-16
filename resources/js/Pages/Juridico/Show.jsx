@@ -3,15 +3,14 @@ import TablaJuridico from "../../components/TablaJuridico";
 import { Link } from "@inertiajs/react";
 import { ArrowLeft, Building2 } from "lucide-react";
 
-export default function Show({ facturas, cliente }) {
+export default function Show({ facturas, cliente, archivos }) {
     return (
         <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
             <div className="max-w-7xl mx-auto space-y-6">
-                
                 {/* HEADER / NAV */}
                 <div className="flex flex-col gap-4">
-                    <Link 
-                        href="/juridico" 
+                    <Link
+                        href="/juridico"
                         className="inline-flex items-center text-gray-500 hover:text-blue-600 transition-colors font-medium text-sm group w-fit"
                     >
                         <ArrowLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" />
@@ -37,20 +36,27 @@ export default function Show({ facturas, cliente }) {
                                 </div>
                             </div>
                         </div>
-                        
+
                         {/* KPI O RESUMEN RÁPIDO SI SE DESEA */}
                         <div className="flex gap-4 border-t md:border-t-0 md:border-l border-gray-100 pt-4 md:pt-0 md:pl-6">
-                             <div className="text-right">
-                                <div className="text-xs text-gray-400 uppercase font-bold">Total Facturas</div>
-                                <div className="text-2xl font-bold text-gray-900">{facturas.length}</div>
-                             </div>
+                            <div className="text-right">
+                                <div className="text-xs text-gray-400 uppercase font-bold">
+                                    Total Facturas
+                                </div>
+                                <div className="text-2xl font-bold text-gray-900">
+                                    {facturas.length}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 {/* TABLA PRINCIPAL */}
-                <TablaJuridico facturas={facturas} cliente={cliente} />
-                
+                <TablaJuridico
+                    facturas={facturas}
+                    cliente={cliente}
+                    archivos={archivos}
+                />
             </div>
         </div>
     );
