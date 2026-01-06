@@ -38,7 +38,7 @@ export default function Show({ facturas, cliente, archivos }) {
                         </div>
 
                         {/* KPI O RESUMEN RÁPIDO SI SE DESEA */}
-                        <div className="flex gap-4 border-t md:border-t-0 md:border-l border-gray-100 pt-4 md:pt-0 md:pl-6">
+                        <div className="flex gap-6 border-t md:border-t-0 md:border-l border-gray-100 pt-4 md:pt-0 md:pl-6">
                             <div className="text-right">
                                 <div className="text-xs text-gray-400 uppercase font-bold">
                                     Total Facturas
@@ -47,6 +47,31 @@ export default function Show({ facturas, cliente, archivos }) {
                                     {facturas.length}
                                 </div>
                             </div>
+
+                            {cliente.ultimo_cobro_fecha && (
+                                <div className="text-right border-l border-gray-100 pl-6">
+                                    <div className="text-xs text-gray-400 uppercase font-bold">
+                                        Último Cobro
+                                    </div>
+                                    <div className="text-sm font-semibold text-gray-700">
+                                        {new Date(
+                                            cliente.ultimo_cobro_fecha
+                                        ).toLocaleDateString("es-VE", {
+                                            day: "2-digit",
+                                            month: "2-digit",
+                                            year: "numeric",
+                                        })}
+                                    </div>
+                                    <div className="text-lg font-bold text-green-600">
+                                        {new Intl.NumberFormat("es-VE", {
+                                            style: "currency",
+                                            currency: "USD",
+                                        }).format(
+                                            cliente.ultimo_cobro_monto || 0
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

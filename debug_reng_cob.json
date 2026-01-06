@@ -1,0 +1,32 @@
+[
+    {
+        "doc_num": "50009280",
+        "tp_doc_cob": "FACT",
+        "neto": "4.75"
+    },
+    {
+        "doc_num": "50009281",
+        "tp_doc_cob": "FACT",
+        "neto": "32.01"
+    },
+    {
+        "doc_num": "50009317",
+        "tp_doc_cob": "FACT",
+        "neto": "5.00"
+    },
+    {
+        "doc_num": "2846",
+        "tp_doc_cob": "N\/CR",
+        "neto": ".24"
+    },
+    {
+        "doc_num": "2847",
+        "tp_doc_cob": "N\/CR",
+        "neto": "1.60"
+    },
+    {
+        "doc_num": "2848",
+        "tp_doc_cob": "N\/CR",
+        "neto": ".25"
+    }
+]

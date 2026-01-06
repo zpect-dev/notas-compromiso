@@ -8,10 +8,14 @@ import {
     Hash,
     Phone,
     Users,
+    LogOut,
 } from "lucide-react";
-import { Link } from "@inertiajs/react";
+import { Link, usePage } from "@inertiajs/react";
 
 export default function Index({ clientes }) {
+    const { auth } = usePage().props;
+    const user = auth?.juridico_user;
+
     const [searchTerm, setSearchTerm] = useState("");
     const [filterStatus, setFilterStatus] = useState("TODOS");
 
@@ -127,11 +131,27 @@ export default function Index({ clientes }) {
                             Gestión Jurídica
                         </h1>
                         <p className="mt-1 text-sm text-gray-500">
-                            Seleccione un cliente para ver su detalle de
-                            facturas y deudas.
+                            Bienvenido,{" "}
+                            <span className="font-semibold text-gray-700">
+                                {user?.username}
+                            </span>{" "}
+                            {user?.is_admin ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 ml-2">
+                                    ADMIN
+                                </span>
+                            ) : null}
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
+                        <Link
+                            as="button"
+                            method="post"
+                            href={route("juridico.logout")}
+                            className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                            title="Cerrar sesión"
+                        >
+                            <LogOut className="w-5 h-5" />
+                        </Link>
                         <div className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-bold border border-blue-200 shadow-sm flex items-center gap-1">
                             <Users className="w-3 h-3" />
                             {clientes.length} Clientes
@@ -238,6 +258,28 @@ export default function Index({ clientes }) {
                                                 <h3 className="text-lg font-bold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
                                                     {cliente.descripcion}
                                                 </h3>
+                                                {cliente.ultimo_cobro_general_fecha && (
+                                                    <div className="flex items-center gap-1 text-xs text-green-600 font-medium mt-0.5">
+                                                        <span>
+                                                            Último cobro:{" "}
+                                                            {new Date(
+                                                                cliente.ultimo_cobro_general_fecha
+                                                            ).toLocaleDateString(
+                                                                "es-VE",
+                                                                {
+                                                                    timeZone:
+                                                                        "UTC",
+                                                                }
+                                                            )}
+                                                        </span>
+                                                        <span>•</span>
+                                                        <span>
+                                                            {formatCurrency(
+                                                                cliente.ultimo_cobro_general_monto
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                )}
 
                                                 {cliente.rif && (
                                                     <p className="text-sm text-gray-500 mt-1 flex items-center gap-1">
@@ -256,9 +298,45 @@ export default function Index({ clientes }) {
                                         </div>
 
                                         <div className="mt-4 pt-4 border-t border-gray-100 flex items-end justify-between">
-                                            <div className="flex items-center gap-1 text-xs text-gray-400 font-medium">
-                                                <User className="w-3 h-3" />
-                                                Ver expediente
+                                            <div className="flex flex-col gap-2">
+                                                <div className="flex items-center gap-1 text-xs text-gray-400 font-medium">
+                                                    <User className="w-3 h-3" />
+                                                    Ver expediente
+                                                </div>
+                                                {user?.is_admin && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            if (
+                                                                confirm(
+                                                                    "¿Enviar cliente a Jurídico?"
+                                                                )
+                                                            ) {
+                                                                router.post(
+                                                                    route(
+                                                                        "juridico.enviar"
+                                                                    ),
+                                                                    {
+                                                                        co_cli: cliente.codigo,
+                                                                        saldo: cliente.saldo_por_cobrar,
+                                                                    },
+                                                                    {
+                                                                        preserveScroll: true,
+                                                                        onSuccess:
+                                                                            () =>
+                                                                                alert(
+                                                                                    "Cliente enviado correctamente"
+                                                                                ),
+                                                                    }
+                                                                );
+                                                            }
+                                                        }}
+                                                        className="px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded hover:bg-blue-700 transition-colors z-10"
+                                                    >
+                                                        Enviar
+                                                    </button>
+                                                )}
                                             </div>
 
                                             <div className="text-right">

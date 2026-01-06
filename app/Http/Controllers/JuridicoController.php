@@ -15,8 +15,20 @@ class JuridicoController extends Controller
 {
     public function index(Request $request) {
         // Listar Clientes Inactivos (En Jurídico) con sus saldos y morosidad
-        $clientes = Cliente::where('inactivo', 1)
-            ->select('co_cli as codigo', 'cli_des as descripcion', 'rif')
+        $query = Cliente::where('inactivo', 0); // Assuming user wants active clients filtered or strictly from the list? 
+        // User request: "el usuario normal vera en su dashboard solo los usuarios que esten en esa tabla"
+        // And "consultar en profit solo los usuarios que estan en la tabla"
+        // I should probably start with query builder.
+
+        $user = $request->session()->get('juridico_user');
+        
+        if (!$user || !$user->is_admin) {
+            // Si es usuario normal, filtrar por la tabla juridico_clientes
+            $clientesJuridico = \App\Models\JuridicoCliente::pluck('co_cli');
+            $query->whereIn('co_cli', $clientesJuridico);
+        }
+
+        $clientes = $query->select('co_cli as codigo', 'cli_des as descripcion', 'rif')
             ->addSelect([
                 'saldo_por_cobrar' => Documento::selectRaw('SUM((saldo / tasa))')
                     ->whereColumn('docum_cc.co_cli', 'clientes.co_cli')
@@ -35,6 +47,20 @@ class JuridicoController extends Controller
         return Inertia::render('Juridico/Index', [
             'clientes' => $clientes
         ]);
+    }
+
+    public function enviar(Request $request) {
+        $request->validate([
+            'co_cli' => 'required|string',
+            'saldo' => 'required|numeric'
+        ]);
+
+        \App\Models\JuridicoCliente::updateOrCreate(
+            ['co_cli' => $request->co_cli],
+            ['saldo' => $request->saldo]
+        );
+
+        return back()->with('success', 'Cliente enviado a Jurídico correctamente');
     }
 
     public function show(Request $request, $clienteId) {
@@ -77,6 +103,7 @@ class JuridicoController extends Controller
                 'docum_cc.fec_emis as emision',
                 'docum_cc.fec_venc as vencimiento',
                 'docum_cc.observa as observacion',
+                'segmento.seg_des as nombre_segmento',
                 
                 // --- CORRECCIÓN AQUÍ: Usar DB::raw para las divisiones ---
                 DB::raw('(docum_cc.monto_net / docum_cc.tasa) as monto_factura'),
@@ -122,6 +149,7 @@ class JuridicoController extends Controller
                     ->limit(1)
             ])
             ->join('clientes', 'docum_cc.co_cli', '=', 'clientes.co_cli')
+            ->leftJoin('segmento', 'clientes.co_seg', '=', 'segmento.co_seg')
             ->where('docum_cc.tipo_doc', 'FACT') 
             ->where('docum_cc.anulado', 0) 
             ->where('docum_cc.co_cli', $clienteId) 

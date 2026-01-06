@@ -244,6 +244,7 @@ export default function TablaJuridico({ facturas, cliente, archivos }) {
                         <tr>
                             {[
                                 "Factura",
+                                "Segmento",
                                 "Emisión",
                                 "Vencimiento",
                                 "Días Mora",
@@ -277,6 +278,12 @@ export default function TablaJuridico({ facturas, cliente, archivos }) {
                                                 {fact.nro_factura}
                                             </span>
                                         </div>
+                                    </td>
+
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                        <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                                            {fact.segmento || "-"}
+                                        </span>
                                     </td>
 
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
@@ -374,7 +381,7 @@ export default function TablaJuridico({ facturas, cliente, archivos }) {
                         ) : (
                             <tr>
                                 <td
-                                    colSpan="9"
+                                    colSpan="10"
                                     className="px-6 py-12 text-center text-gray-500"
                                 >
                                     <div className="flex flex-col items-center">
