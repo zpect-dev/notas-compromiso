@@ -147,6 +147,44 @@ export default function TablaJuridico({ facturas, cliente, archivos }) {
         e.target.value = null;
     };
 
+    // 8. MANEJO DE OBSERVACIONES Y RECUPERACIÓN
+    const [localObservations, setLocalObservations] = useState({});
+
+    const handleObservationChange = (nroDoc, value) => {
+        setLocalObservations((prev) => ({
+            ...prev,
+            [nroDoc]: value,
+        }));
+    };
+
+    const handleMarcarRecuperado = (fact) => {
+        const obs =
+            localObservations[fact.nro_factura] !== undefined
+                ? localObservations[fact.nro_factura]
+                : fact.observacion_manual || "";
+
+        if (
+            confirm(
+                `¿Desea marcar la factura ${fact.nro_factura} como RECUPERADA?`
+            )
+        ) {
+            router.post(
+                route("juridico.recuperar"),
+                {
+                    nro_doc: fact.nro_factura,
+                    co_cli: cliente.codigo,
+                    observacion: obs,
+                },
+                {
+                    onSuccess: () => {
+                        toast.success("Factura marcada como recuperada");
+                    },
+                    preserveScroll: true,
+                }
+            );
+        }
+    };
+
     const fileButtons = [
         { key: "solicitud_pago", label: "Solicitud de pago" },
         { key: "retiro_mercancia", label: "Retiro de mercancia" },
@@ -249,14 +287,20 @@ export default function TablaJuridico({ facturas, cliente, archivos }) {
                                 "Vencimiento",
                                 "Días Mora",
                                 "Monto Original",
+                                "Saldo Inicial Jurídico",
                                 "Saldo Actual",
                                 "Estado",
                                 "Último Abono",
                                 "Observaciones",
+                                "Acciones",
                             ].map((header) => (
                                 <th
                                     key={header}
-                                    className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider"
+                                    className={`px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider ${
+                                        header === "Observaciones"
+                                            ? "min-w-[300px]"
+                                            : ""
+                                    }`}
                                 >
                                     {header}
                                 </th>
@@ -282,7 +326,7 @@ export default function TablaJuridico({ facturas, cliente, archivos }) {
 
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                         <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                                            {fact.segmento || "-"}
+                                            {fact.nombre_segmento || "-"}
                                         </span>
                                     </td>
 
@@ -317,6 +361,10 @@ export default function TablaJuridico({ facturas, cliente, archivos }) {
 
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-500">
                                         {formatCurrency(fact.monto_factura)}
+                                    </td>
+
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
+                                        {formatCurrency(fact.saldo_inicial)}
                                     </td>
 
                                     <td className="px-6 py-4 whitespace-nowrap">
@@ -369,19 +417,83 @@ export default function TablaJuridico({ facturas, cliente, archivos }) {
                                     </td>
 
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        <div
-                                            className="max-w-[150px] truncate"
-                                            title={fact.observacion}
-                                        >
-                                            {fact.observacion || "-"}
-                                        </div>
+                                        {fact.estado_recuperacion ===
+                                        "PENDIENTE" ? (
+                                            <div className="relative group">
+                                                <input
+                                                    type="text"
+                                                    disabled={
+                                                        !!fact.observacion_manual
+                                                    }
+                                                    title={
+                                                        fact.observacion_manual ||
+                                                        ""
+                                                    }
+                                                    className={`w-full border-2 rounded-lg text-sm transition-all p-2 font-medium ${
+                                                        fact.observacion_manual
+                                                            ? "bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed italic truncate"
+                                                            : "border-white bg-white/50 focus:bg-white focus:border-white focus:ring-4 focus:ring-white text-gray-700 placeholder-white/50"
+                                                    }`}
+                                                    placeholder=""
+                                                    value={
+                                                        localObservations[
+                                                            fact.nro_factura
+                                                        ] !== undefined
+                                                            ? localObservations[
+                                                                  fact
+                                                                      .nro_factura
+                                                              ]
+                                                            : fact.observacion_manual ||
+                                                              ""
+                                                    }
+                                                    onChange={(e) =>
+                                                        handleObservationChange(
+                                                            fact.nro_factura,
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                />
+                                            </div>
+                                        ) : (
+                                            <span className="text-gray-400 text-xs italic">
+                                                {fact.observacion || "-"}
+                                            </span>
+                                        )}
+                                    </td>
+
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                                        {fact.estado_manual == 2 ? (
+                                            <span className="inline-flex items-center px-2 py-1 rounded text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                                                <DollarSign className="w-3 h-3 mr-1" />
+                                                PAGADO
+                                            </span>
+                                        ) : fact.estado_manual == 1 ? (
+                                            <span className="inline-flex items-center px-2 py-1 rounded text-xs font-bold bg-green-100 text-green-800 border border-green-200">
+                                                <Check className="w-3 h-3 mr-1" />
+                                                OK
+                                            </span>
+                                        ) : fact.estado_recuperacion ===
+                                          "PENDIENTE" ? (
+                                            <button
+                                                onClick={() =>
+                                                    handleMarcarRecuperado(fact)
+                                                }
+                                                className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                            >
+                                                Recuperado
+                                            </button>
+                                        ) : (
+                                            <span className="text-gray-400 text-xs">
+                                                -
+                                            </span>
+                                        )}
                                     </td>
                                 </tr>
                             ))
                         ) : (
                             <tr>
                                 <td
-                                    colSpan="10"
+                                    colSpan="12"
                                     className="px-6 py-12 text-center text-gray-500"
                                 >
                                     <div className="flex flex-col items-center">

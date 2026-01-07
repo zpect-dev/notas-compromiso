@@ -78,6 +78,10 @@ Route::post('/juridico/logout', [App\Http\Controllers\JuridicoAuthController::cl
 Route::middleware([App\Http\Middleware\EnsureJuridicoAuth::class])->group(function () {
     Route::get('/juridico', [JuridicoController::class, 'index'])->name('juridico.index');
     Route::post('/juridico/enviar', [JuridicoController::class, 'enviar'])->name('juridico.enviar');
+    Route::post('/juridico/recuperar', [JuridicoController::class, 'marcarRecuperado'])->name('juridico.recuperar');
+    Route::get('/juridico/enviados', [JuridicoController::class, 'enviados'])->name('juridico.enviados');
+    Route::get('juridico/recuperadas', [JuridicoController::class, 'recuperadas'])->name('juridico.recuperadas');
+    Route::post('juridico/pagar', [JuridicoController::class, 'marcarPagado'])->name('juridico.pagar');
     Route::get('/juridico/{cliente}', [JuridicoController::class, 'show'])->name('juridico.show');
     Route::post('/juridico/{cliente}/archivo', [JuridicoController::class, 'subirArchivo'])->name('juridico.archivo');
 });

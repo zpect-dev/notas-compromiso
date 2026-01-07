@@ -19,4 +19,9 @@ class JuridicoCliente extends Model
     protected $casts = [
         'saldo' => 'decimal:2',
     ];
+
+    public function juridicoFacturas()
+    {
+        return $this->hasMany(JuridicoFactura::class, 'juridico_cliente_id');
+    }
 }

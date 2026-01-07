@@ -9,15 +9,42 @@ import {
     Phone,
     Users,
     LogOut,
+    ChevronLeft,
 } from "lucide-react";
-import { Link, usePage } from "@inertiajs/react";
+import { Link, usePage, router } from "@inertiajs/react";
 
-export default function Index({ clientes }) {
+export default function Index({ clientes, filters }) {
+    const { data: clientesData, links, meta } = clientes;
     const { auth } = usePage().props;
     const user = auth?.juridico_user;
 
-    const [searchTerm, setSearchTerm] = useState("");
-    const [filterStatus, setFilterStatus] = useState("TODOS");
+    const [searchTerm, setSearchTerm] = useState(filters.search || "");
+    const [filterStatus, setFilterStatus] = useState(filters.status || "TODOS");
+
+    const isFirstRender = React.useRef(true);
+
+    // Debounce search
+    React.useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            return;
+        }
+
+        const timeoutId = setTimeout(() => {
+            router.get(
+                route("juridico.index"),
+                {
+                    search: searchTerm,
+                    status: filterStatus,
+                },
+                {
+                    preserveState: true,
+                    replace: true,
+                }
+            );
+        }, 500);
+        return () => clearTimeout(timeoutId);
+    }, [searchTerm, filterStatus]);
 
     const getClientStatus = (saldo, diasMora) => {
         const saldoNum = parseFloat(saldo || 0);
@@ -92,28 +119,6 @@ export default function Index({ clientes }) {
         };
     };
 
-    const clientesFiltrados = clientes.filter((cliente) => {
-        const busqueda = searchTerm.toLowerCase();
-        const codigo = cliente.codigo.toLowerCase();
-        const descripcion = cliente.descripcion.toLowerCase();
-        const rif = (cliente.rif || "").toLowerCase();
-
-        const matchesSearch =
-            codigo.includes(busqueda) ||
-            descripcion.includes(busqueda) ||
-            rif.includes(busqueda);
-
-        if (!matchesSearch) return false;
-
-        if (filterStatus === "TODOS") return true;
-
-        const status = getClientStatus(
-            cliente.saldo_por_cobrar,
-            cliente.morosidad_maxima
-        );
-        return status.key === filterStatus;
-    });
-
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat("en-US", {
             style: "currency",
@@ -143,6 +148,24 @@ export default function Index({ clientes }) {
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
+                        {user?.is_admin && (
+                            <div className="flex items-center gap-2">
+                                <Link
+                                    href={route("juridico.recuperadas")}
+                                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors shadow-sm flex items-center gap-2"
+                                >
+                                    <Users className="w-4 h-4" />
+                                    Recuperadas
+                                </Link>
+                                <Link
+                                    href={route("juridico.enviados")}
+                                    className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm flex items-center gap-2"
+                                >
+                                    <Users className="w-4 h-4" />
+                                    Ver Enviados
+                                </Link>
+                            </div>
+                        )}
                         <Link
                             as="button"
                             method="post"
@@ -154,82 +177,65 @@ export default function Index({ clientes }) {
                         </Link>
                         <div className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-bold border border-blue-200 shadow-sm flex items-center gap-1">
                             <Users className="w-3 h-3" />
-                            {clientes.length} Clientes
+                            {clientes.total} Clientes
                         </div>
                     </div>
                 </div>
 
                 {/* FILTROS */}
-                <div className="space-y-4">
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                        <div className="relative">
+                <div className="mb-8 space-y-6">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="relative group flex-1 max-w-md">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <Search className="h-5 w-5 text-gray-400" />
+                                <Search className="h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
                             </div>
                             <input
                                 type="text"
-                                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all sm:text-sm"
+                                className="block w-full pl-10 pr-3 py-2.5 border-none rounded-xl bg-white shadow-sm ring-1 ring-gray-200 focus:ring-2 focus:ring-indigo-500/20 focus:text-gray-900 placeholder-gray-400 text-sm transition-all"
                                 placeholder="Buscar cliente por código, nombre o RIF..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
-                    </div>
 
-                    <div className="flex flex-wrap gap-2">
-                        {[
-                            {
-                                key: "TODOS",
-                                label: "Todos",
-                                color: "bg-gray-100 text-gray-700 hover:bg-gray-200",
-                            },
-                            {
-                                key: "SANO",
-                                label: "Sano",
-                                color: "bg-green-100 text-green-800 hover:bg-green-200",
-                            },
-                            {
-                                key: "OPORTUNIDAD",
-                                label: "Alto valor",
-                                color: "bg-blue-100 text-blue-800 hover:bg-blue-200",
-                            },
-                            {
-                                key: "ADVERTENCIA",
-                                label: "Advertencia",
-                                color: "bg-orange-100 text-orange-800 hover:bg-orange-200",
-                            },
-                            {
-                                key: "CRITICO",
-                                label: "Crítico",
-                                color: "bg-red-100 text-red-800 hover:bg-red-200",
-                            },
-                            {
-                                key: "PERDIDA_TOTAL",
-                                label: "Alto riesgo",
-                                color: "bg-purple-100 text-purple-800 hover:bg-purple-200",
-                            },
-                        ].map((filter) => (
-                            <button
-                                key={filter.key}
-                                onClick={() => setFilterStatus(filter.key)}
-                                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                                    filterStatus === filter.key
-                                        ? "ring-2 ring-offset-2 ring-gray-400 shadow-md transform scale-105 " +
-                                          filter.color
-                                        : "opacity-70 hover:opacity-100 " +
-                                          filter.color
-                                }`}
-                            >
-                                {filter.label}
-                            </button>
-                        ))}
+                        <div className="flex items-center gap-3 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
+                            {/* <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider mr-1 shrink-0">
+                                <Filter className="w-3 h-3 inline mr-1" />
+                                Estado
+                            </span> */}
+                            {[
+                                "TODOS",
+                                "SANO",
+                                "OPORTUNIDAD",
+                                "ADVERTENCIA",
+                                "CRITICO",
+                                "PERDIDA_TOTAL",
+                            ].map((status) => (
+                                <button
+                                    key={status}
+                                    onClick={() => setFilterStatus(status)}
+                                    className={`
+                                        px-3 py-1.5 rounded-lg text-xs font-bold transition-all border shrink-0
+                                        ${
+                                            filterStatus === status
+                                                ? "bg-slate-800 text-white border-slate-800 shadow-md shadow-slate-200"
+                                                : "bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                                        }
+                                    `}
+                                >
+                                    {status
+                                        .replace("_", " ")
+                                        .replace("OPORTUNIDAD", "ALTO VALOR")}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
 
                 {/* CLIENTES GRID */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {clientesFiltrados.length > 0 ? (
-                        clientesFiltrados.map((cliente) => {
+                    {clientesData.length > 0 ? (
+                        clientesData.map((cliente) => {
                             const status = getClientStatus(
                                 cliente.saldo_por_cobrar,
                                 cliente.morosidad_maxima
@@ -372,6 +378,61 @@ export default function Index({ clientes }) {
                         </div>
                     )}
                 </div>
+
+                {/* PAGINATION */}
+                {links && links.length > 3 && (
+                    <div className="flex items-center justify-center mt-10 pb-12">
+                        <div className="flex flex-wrap gap-2 p-1 bg-white rounded-lg shadow-sm border border-gray-100">
+                            {links.map((link, key) => {
+                                let label = link.label;
+                                if (link.label.includes("Previous")) {
+                                    label = <ChevronLeft className="w-4 h-4" />;
+                                } else if (link.label.includes("Next")) {
+                                    label = (
+                                        <ChevronRight className="w-4 h-4" />
+                                    );
+                                } else {
+                                    // Strip html entities if any, usually just numbers
+                                    label = link.label.replace(
+                                        /&amp;laquo;|&amp;raquo;|&laquo;|&raquo;/g,
+                                        ""
+                                    );
+                                }
+
+                                const isPrevOrNext =
+                                    link.label.includes("Previous") ||
+                                    link.label.includes("Next");
+                                const baseClasses =
+                                    "flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md transition-all duration-200";
+
+                                if (link.url === null) {
+                                    return (
+                                        <div
+                                            key={key}
+                                            className={`${baseClasses} text-gray-300 cursor-not-allowed`}
+                                        >
+                                            {label}
+                                        </div>
+                                    );
+                                }
+
+                                return (
+                                    <Link
+                                        key={key}
+                                        className={`${baseClasses} ${
+                                            link.active
+                                                ? "bg-blue-600 text-white shadow-md transform scale-105"
+                                                : "text-gray-600 hover:bg-blue-50 hover:text-blue-600"
+                                        }`}
+                                        href={link.url}
+                                    >
+                                        {label}
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
