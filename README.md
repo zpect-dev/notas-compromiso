@@ -1,59 +1,112 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Notas Compromiso - Módulo Jurídico
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## 📖 Visión General
 
-## About Laravel
+Este proyecto es una aplicación web empresarial desarrollada en **Laravel 12** con **Inertia.js** y **React**, diseñada para la gestión de cobranza y seguimiento jurídico de clientes. Su función principal es permitir al departamento de cobranza y administradores gestionar carteras de clientes morosos, enviar casos a cobranza jurídica y recuperar deudas.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+El sistema destaca por su arquitectura híbrida de bases de datos, conectándose simultáneamente a un sistema legacy en **SQL Server** (para lectura de facturación y clientes) y una base de datos local **MySQL** (para el seguimiento del estado jurídico y auditoría).
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+---
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## 🛠 Stack Tecnológico
 
-## Learning Laravel
+-   **Backend**: Laravel 12 (PHP 8.2+)
+-   **Frontend**: React 19 + Inertia.js 2.0
+-   **Estilos**: TailwindCSS 4.0 + Lucide React (Iconos)
+-   **Base de Datos**:
+    -   **SQL Server**: Fuente de verdad para Clientes, Facturas (Documentos), Vendedores y Segmentos.
+    -   **MySQL**: Gestión de estados jurídicos, usuarios del sistema y auditoría de envíos.
+-   **Build Tool**: Vite 7.0
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+---
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## 🏛 Arquitectura de Datos
 
-## Laravel Sponsors
+El sistema implementa una arquitectura de **Lectura Cruzada**:
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+1.  **Lectura en Tiempo Real (SQL Server)**:
 
-### Premium Partners
+    -   La información financiera (saldo, días de mora, facturas vencidas) se consulta en tiempo real desde el ERP legacy.
+    -   Modelos: `Cliente`, `Documento` (Facturas), `Vendedor`, `Segmento`.
+    -   Conexión: `sqlsrv`.
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+2.  **Persistencia de Estado (MySQL)**:
+    -   Cuando un cliente es "enviado a jurídico", se crea un registro en MySQL.
+    -   Se toma una "foto" (snapshot) del estado de las facturas en ese momento para congelar el "Saldo Inicial".
+    -   Modelos: `JuridicoCliente`, `JuridicoFactura`, `JuridicoFacturaRecuperada`.
+    -   Conexión: `mysql` (default).
 
-## Contributing
+---
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## 🚀 Funcionalidades Principales
 
-## Code of Conduct
+### 1. Tablero Principal de Cobranza (`/juridico`)
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+-   **Filtrado Inteligente de Clientes**:
+    -   Clasificación automática basada en métricas financieras:
+        -   🟣 **Pérdida Total**: Saldo > $2000 y Mora > 60 días.
+        -   🔴 **Crítico**: Mora > 60 días.
+        -   🟠 **Advertencia**: Mora entre 30-60 días.
+        -   🔵 **Alto Valor**: Saldo > $2000 y Mora < 30 días.
+        -   🟢 **Sano**: Resto de la cartera.
+-   **Buscador Global**: Búsqueda por Código de Cliente, RIF o Nombre.
+-   **Filtros de Admin**: Los administradores ven una cartera segmentada específica (excluyendo segmentos internos/inactivos) o pueden ver la lista completa.
 
-## Security Vulnerabilities
+### 2. Gestión de "Enviados a Jurídico"
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+-   **Acción de Envío**:
+    -   Al enviar un cliente, el sistema registra el evento y congela las facturas pendientes.
+    -   El cliente pasa a estar "En Jurídico" y es visible en la lista de Enviados.
+-   **Vista de Enviados (`/juridico/enviados`)**:
+    -   Lista exclusiva de clientes que han sido procesados.
+    -   Permite a los administradores monitorear la cartera que ya está en manos legales.
+    -   Sincronizada con `juridico_clientes` en MySQL pero enriquecida con datos en vivo de SQL Server.
 
-## License
+### 3. Recuperación de Cartera (`/juridico/recuperadas`)
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+-   **Gestión de Facturas**:
+    -   Dentro del detalle del cliente, se pueden marcar facturas individuales como "Recuperadas".
+    -   Se registra el motivo/observación de la recuperación.
+-   **Panel de Recuperadas**:
+    -   Vista consolidada de todas las facturas que han sido recuperadas exitosamente.
+    -   Muestra el "Saldo Inicial" (snapshot) vs "Saldo Actual" (vivo), permitiendo ver la efectividad de la cobranza.
+
+### 4. Expediente Digital (`/juridico/{cliente}`)
+
+-   **Detalle 360°**: Muestra información fiscal, vendedor asignado y métricas de deuda.
+-   **Tabla de Facturas**: Listado de todas las facturas pendientes con semáforo de antigüedad.
+-   **Historial de Pagos**: Últimos cobros realizados por el cliente.
+-   **Gestión de Archivos**: Carga y visualización de soportes digitales (PDFs, imágenes) asociados al expediente.
+
+---
+
+## 🔌 API Endpoints Clave
+
+| Método | Endpoint                 | Controlador                           | Descripción                                             |
+| :----- | :----------------------- | :------------------------------------ | :------------------------------------------------------ |
+| `GET`  | `/juridico`              | `JuridicoController@index`            | Lista principal con filtros y métricas calculadas.      |
+| `POST` | `/juridico/enviar`       | `JuridicoController@enviar`           | Envía cliente a jurídico y guarda snapshot de facturas. |
+| `GET`  | `/juridico/enviados`     | `JuridicoController@enviados`         | Lista de clientes ya gestionados.                       |
+| `POST` | `/juridico/recuperar`    | `JuridicoController@marcarRecuperado` | Marca una factura específica como recuperada.           |
+| `GET`  | `/juridico/recuperadas`  | `JuridicoController@recuperadas`      | Reporte de efectividad de cobranza.                     |
+| `POST` | `/juridico/{id}/archivo` | `JuridicoController@subirArchivo`     | Sube documentos al expediente del cliente.              |
+
+---
+
+## 📦 Instalación y Despliegue
+
+1.  **Requisitos**: PHP 8.2, SQL Server Driver, Composer, Node.js 20+.
+2.  **Configuración**:
+    -   Configurar `.env` con doble conexión (`DB_CONNECTION=mysql` y `DB_SQLSRV_...`).
+3.  **Instalación**:
+    ```bash
+    composer install
+    npm install
+    php artisan migrate
+    php artisan db:seed
+    npm run build
+    ```
+
+---
+
+> **Nota**: Este sistema es crítico para la operación financiera. Cualquier cambio en la lógica de clasificación de clientes (`PERDIDA_TOTAL`, `CRITICO`, etc.) debe ser validado con la gerencia de cobranza.
