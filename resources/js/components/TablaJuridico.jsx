@@ -12,12 +12,16 @@ import {
 } from "lucide-react";
 import { router } from "@inertiajs/react";
 import { toast } from "sonner";
+import { Save } from "lucide-react";
+
+import ModalConvenio from "./modal/ModalConvenio"; // Import ModalConvenio
 // import ModalRechazo from "../components/modal/ModalRechazo"; // Si se requiere rechazar/observar facturas
 
 export default function TablaJuridico({ facturas, cliente, archivos }) {
     // 1. ESTADOS
     const [searchTerm, setSearchTerm] = useState("");
     const [filterStatus, setFilterStatus] = useState("todos"); // todos, recuperados, pendientes
+    const [isConvenioModalOpen, setIsConvenioModalOpen] = useState(false); // State for Convenio Modal
 
     const formatDate = (dateString) => {
         if (!dateString) return "-";
@@ -119,8 +123,13 @@ export default function TablaJuridico({ facturas, cliente, archivos }) {
         if (url) {
             window.open(url, "_blank");
         } else {
-            setUploadingKey(key);
-            document.getElementById("fileInput").click();
+            console.log("Clicked key:", key);
+            if (key === "convenio_pago") {
+                setIsConvenioModalOpen(true);
+            } else {
+                setUploadingKey(key);
+                document.getElementById("fileInput").click();
+            }
         }
     };
 
@@ -132,19 +141,34 @@ export default function TablaJuridico({ facturas, cliente, archivos }) {
         formData.append("archivo", file);
         formData.append("tipo", uploadingKey);
 
+        uploadFile(formData);
+
+        // Reset input
+        e.target.value = null;
+    };
+
+    const handleConvenioUpload = ({ file, frecuencia, cantidad }) => {
+        const formData = new FormData();
+        formData.append("archivo", file);
+        formData.append("tipo", "convenio_pago");
+        if (frecuencia) formData.append("frecuencia_convenio", frecuencia);
+        if (cantidad) formData.append("cantidad_pagar", cantidad);
+
+        uploadFile(formData);
+    };
+
+    const uploadFile = (formData) => {
         router.post(`/juridico/${cliente.codigo.trim()}/archivo`, formData, {
             onSuccess: () => {
                 toast.success("Archivo subido correctamente");
                 setUploadingKey(null);
+                setIsConvenioModalOpen(false); // Close modal if open
             },
             onError: () => {
                 toast.error("Error al subir el archivo");
                 setUploadingKey(null);
             },
         });
-
-        // Reset input
-        e.target.value = null;
     };
 
     // 8. MANEJO DE OBSERVACIONES Y RECUPERACIÓN
@@ -185,12 +209,35 @@ export default function TablaJuridico({ facturas, cliente, archivos }) {
         }
     };
 
+    const handleGuardarObservacion = (fact) => {
+        const obs =
+            localObservations[fact.nro_factura] !== undefined
+                ? localObservations[fact.nro_factura]
+                : fact.observacion_manual || "";
+
+        // Optional: check if obs is empty or unchanged, but user might want to save empty to clear it?
+        // Let's just allow saving whatever is there.
+
+        router.post(
+            route("juridico.observacion"),
+            {
+                nro_doc: fact.nro_factura,
+                co_cli: cliente.codigo,
+                observacion: obs,
+            },
+            {
+                onSuccess: () => {
+                    toast.success("Observación guardada");
+                },
+                preserveScroll: true,
+            }
+        );
+    };
+
     const fileButtons = [
         { key: "solicitud_pago", label: "Solicitud de pago" },
         { key: "retiro_mercancia", label: "Retiro de mercancia" },
         { key: "convenio_pago", label: "Convenio de pago" },
-        { key: "frecuencia_convenio", label: "Frecuencia convenio" },
-        { key: "cantidad_pagar", label: "Cantidad a pagar" },
         { key: "cobranza_extrajudicial", label: "Cobranza extrajudicial" },
     ];
 
@@ -206,7 +253,7 @@ export default function TablaJuridico({ facturas, cliente, archivos }) {
             />
 
             {/* BOTONES ARCHIVOS */}
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {fileButtons.map((btn) => {
                     const url = archivos?.[btn.key];
                     const isActive = !!url;
@@ -422,19 +469,12 @@ export default function TablaJuridico({ facturas, cliente, archivos }) {
                                             <div className="relative group">
                                                 <input
                                                     type="text"
-                                                    disabled={
-                                                        !!fact.observacion_manual
-                                                    }
                                                     title={
                                                         fact.observacion_manual ||
                                                         ""
                                                     }
-                                                    className={`w-full border-2 rounded-lg text-sm transition-all p-2 font-medium ${
-                                                        fact.observacion_manual
-                                                            ? "bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed italic truncate"
-                                                            : "border-white bg-white/50 focus:bg-white focus:border-white focus:ring-4 focus:ring-white text-gray-700 placeholder-white/50"
-                                                    }`}
-                                                    placeholder=""
+                                                    className="w-full border-2 rounded-lg text-sm transition-all p-2 font-medium border-white bg-white/50 focus:bg-white focus:border-white focus:ring-4 focus:ring-white text-gray-700 placeholder-white/50"
+                                                    placeholder="Escribir observación..."
                                                     value={
                                                         localObservations[
                                                             fact.nro_factura
@@ -453,6 +493,17 @@ export default function TablaJuridico({ facturas, cliente, archivos }) {
                                                         )
                                                     }
                                                 />
+                                                <button
+                                                    onClick={() =>
+                                                        handleGuardarObservacion(
+                                                            fact
+                                                        )
+                                                    }
+                                                    className="mt-1 flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-600 text-[10px] font-bold uppercase rounded hover:bg-blue-100 transition-colors"
+                                                >
+                                                    <Save className="w-3 h-3" />
+                                                    Guardar Obs.
+                                                </button>
                                             </div>
                                         ) : (
                                             <span className="text-gray-400 text-xs italic">
@@ -516,6 +567,12 @@ export default function TablaJuridico({ facturas, cliente, archivos }) {
             <div className="text-xs text-gray-400 text-center mt-4">
                 Mostrando {facturasFiltradas.length} documentos
             </div>
+
+            <ModalConvenio
+                isOpen={isConvenioModalOpen}
+                onClose={() => setIsConvenioModalOpen(false)}
+                onUpload={handleConvenioUpload}
+            />
         </div>
     );
 }

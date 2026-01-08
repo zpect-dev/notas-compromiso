@@ -8,6 +8,8 @@ import { resolvePageComponent } from "laravel-vite-plugin/inertia-helpers";
 const appName =
     window.document.getElementsByTagName("title")[0]?.innerText || "Laravel";
 
+import { Toaster } from "sonner";
+
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,
 
@@ -21,6 +23,11 @@ createInertiaApp({
     // Configuración de la app React
     setup({ el, App, props }) {
         const root = createRoot(el);
-        root.render(<App {...props} />);
+        root.render(
+            <>
+                <Toaster richColors position="top-right" />
+                <App {...props} />
+            </>
+        );
     },
 });

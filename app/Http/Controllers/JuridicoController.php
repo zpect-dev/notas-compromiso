@@ -72,6 +72,13 @@ class JuridicoController extends Controller
                     $query->where('metrics.saldo_por_cobrar', '>', 2000)
                           ->where('metrics.morosidad_maxima', '>', 60);
                     break;
+                case 'CONVENIO':
+                    // Fetch clients with convenio from MySQL
+                    $clientsWithConvenio = JuridicoArchivo::whereNotNull('convenio_pago')
+                        ->where('convenio_pago', '!=', '')
+                        ->pluck('co_cli');
+                    $query->whereIn('clientes.co_cli', $clientsWithConvenio);
+                    break;
                 case 'CRITICO':
                     $query->where('metrics.morosidad_maxima', '>', 60)
                           ->where(function($q) {
@@ -105,6 +112,32 @@ class JuridicoController extends Controller
         $clientes = $query->orderBy('clientes.cli_des', 'asc')
             ->paginate(12)
             ->withQueryString();
+
+        // Hydrate with JuridicoArchivo data (Convenio info) from MySQL
+        if ($clientes->count() > 0) {
+            $clientCodes = $clientes->pluck('codigo');
+            $archivos = JuridicoArchivo::whereIn('co_cli', $clientCodes)
+                ->whereNotNull('convenio_pago')
+                ->where('convenio_pago', '!=', '')
+                ->get()
+                ->keyBy(function ($item) {
+                     return trim($item->co_cli);
+                });
+
+            $clientes->getCollection()->transform(function ($cliente) use ($archivos) {
+                $archivo = $archivos->get(trim($cliente->codigo));
+                if ($archivo) {
+                    $cliente->convenio_pago = $archivo->convenio_pago;
+                    $cliente->frecuencia_convenio = $archivo->frecuencia_convenio;
+                    $cliente->cantidad_pagar = $archivo->cantidad_pagar;
+                } else {
+                     $cliente->convenio_pago = null;
+                     $cliente->frecuencia_convenio = null;
+                     $cliente->cantidad_pagar = null;
+                }
+                return $cliente;
+            });
+        }
 
         return Inertia::render('Juridico/Index', [
             'clientes' => $clientes,
@@ -243,8 +276,6 @@ class JuridicoController extends Controller
             'solicitud_pago',
             'retiro_mercancia',
             'convenio_pago',
-            'frecuencia_convenio',
-            'cantidad_pagar',
             'cobranza_extrajudicial'
         ];
 
@@ -382,6 +413,29 @@ class JuridicoController extends Controller
         return back()->with('success', 'Factura marcada como recuperada');
     }
 
+    public function guardarObservacion(Request $request) {
+        $request->validate([
+            'nro_doc' => 'required|string',
+            'co_cli' => 'required|string',
+            'observacion' => 'nullable|string'
+        ]);
+
+        $clienteId = $request->co_cli;
+        $juridicoCliente = \App\Models\JuridicoCliente::where('co_cli', $clienteId)->firstOrFail();
+
+        JuridicoFactura::updateOrCreate(
+             [
+                'juridico_cliente_id' => $juridicoCliente->id,
+                'nro_doc' => $request->nro_doc
+            ],
+            [
+                'observacion' => $request->observacion
+            ]
+        );
+
+        return back()->with('success', 'Observación guardada correctamente');
+    }
+
     public function marcarPagado(Request $request) {
         $request->validate([
             'ids' => 'required|array',
@@ -396,7 +450,9 @@ class JuridicoController extends Controller
     public function subirArchivo(Request $request, $clienteId) {
         $request->validate([
             'archivo' => 'required|file|mimes:pdf|max:102400', // Max 10MB
-            'tipo' => 'required|in:solicitud_pago,retiro_mercancia,convenio_pago,frecuencia_convenio,cantidad_pagar,cobranza_extrajudicial'
+            'tipo' => 'required|in:solicitud_pago,retiro_mercancia,convenio_pago,cobranza_extrajudicial',
+            'frecuencia_convenio' => 'nullable|string',
+            'cantidad_pagar' => 'nullable|numeric'
         ]);
 
         $tipo = $request->input('tipo');
@@ -409,9 +465,20 @@ class JuridicoController extends Controller
             return back()->with('error', 'Error al subir el archivo');
         }
 
+        $dataToUpdate = [$tipo => $nameImage];
+
+        if ($tipo === 'convenio_pago') {
+            if ($request->has('frecuencia_convenio')) {
+                $dataToUpdate['frecuencia_convenio'] = $request->input('frecuencia_convenio');
+            }
+            if ($request->has('cantidad_pagar')) {
+                $dataToUpdate['cantidad_pagar'] = $request->input('cantidad_pagar');
+            }
+        }
+
         JuridicoArchivo::updateOrCreate(
             ['co_cli' => $clienteId],
-            [$tipo => $nameImage]
+            $dataToUpdate
         );
 
         return back()->with('success', 'Archivo subido correctamente');

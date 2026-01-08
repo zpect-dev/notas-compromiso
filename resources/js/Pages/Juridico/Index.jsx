@@ -10,6 +10,7 @@ import {
     Users,
     LogOut,
     ChevronLeft,
+    Handshake,
 } from "lucide-react";
 import { Link, usePage, router } from "@inertiajs/react";
 
@@ -205,6 +206,7 @@ export default function Index({ clientes, filters }) {
                             </span> */}
                             {[
                                 "TODOS",
+                                "CONVENIO",
                                 "SANO",
                                 "OPORTUNIDAD",
                                 "ADVERTENCIA",
@@ -264,6 +266,27 @@ export default function Index({ clientes, filters }) {
                                                 <h3 className="text-lg font-bold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
                                                     {cliente.descripcion}
                                                 </h3>
+                                                {cliente.convenio_pago && (
+                                                    <div className="inline-flex items-center gap-1.5 px-2 py-1 my-1 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-sm text-xs font-bold">
+                                                        <Handshake className="w-3.5 h-3.5" />
+                                                        <span>
+                                                            {cliente.frecuencia_convenio ||
+                                                                "Convenio"}
+                                                        </span>
+                                                        {cliente.cantidad_pagar && (
+                                                            <>
+                                                                <span className="text-indigo-300">
+                                                                    •
+                                                                </span>
+                                                                <span className="font-mono">
+                                                                    {formatCurrency(
+                                                                        cliente.cantidad_pagar
+                                                                    )}
+                                                                </span>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                )}
                                                 {cliente.ultimo_cobro_general_fecha && (
                                                     <div className="flex items-center gap-1 text-xs text-green-600 font-medium mt-0.5">
                                                         <span>
