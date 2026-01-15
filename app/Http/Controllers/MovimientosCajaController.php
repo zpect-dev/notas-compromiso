@@ -30,7 +30,7 @@ class MovimientosCajaController extends Controller
                 'abonos_sum_monto_h' => MovimientoCaja::query()
                     ->from('mov_caj as sub')
                     ->selectRaw('SUM(monto_h)')
-                    ->whereRaw('TRY_CAST(sub.aux02 AS BIGINT) = mov_caj.mov_num')
+                    ->whereRaw('TRY_CAST(TRIM(sub.campo3) AS BIGINT) = mov_caj.mov_num')
                     ->limit(1)
             ])
             ->where('origen', "CAJ")
